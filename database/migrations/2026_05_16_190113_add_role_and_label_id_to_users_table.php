@@ -11,10 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('artist')->after('password');
-            $table->foreignId('label_id')->nullable()->after('role')->constrained('labels')->nullOnDelete();
-        });
+        // Раздельная проверка для роли
+        if (!Schema::hasColumn('users', 'role')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('role')->default('artist')->after('password');
+            });
+        }
+
+        // Раздельная проверка для label_id
+        if (!Schema::hasColumn('users', 'label_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->foreignId('label_id')->nullable()->after('role')->constrained('labels')->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -23,8 +32,14 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['label_id']);
-            $table->dropColumn(['role', 'label_id']);
+            if (Schema::hasColumn('users', 'label_id')) {
+                $table->dropForeign(['label_id']);
+                $table->dropColumn('label_id');
+            }
+            
+            if (Schema::hasColumn('users', 'role')) {
+                $table->dropColumn('role');
+            }
         });
     }
 };

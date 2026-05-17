@@ -10,7 +10,7 @@ class Platform extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'code'];
+    protected $fillable = ['name', 'slug', 'code', 'icon'];
 
     public function earnings(): HasMany
     {
