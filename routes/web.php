@@ -18,20 +18,21 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // ЕДИНЫЙ ДАШБОРД — URL остаётся /dashboard
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        if ($user->role === 'label') {
-            return redirect()->route('label.dashboard');
-        }
-        return redirect()->route('artist.dashboard');
+
+        // Можно оставить как есть, если фронтендер сделал универсальный Dashboard.vue
+        return Inertia::render('Dashboard', [
+            'role' => $user->role,
+        ]);
     })->name('dashboard');
 
-    // Группа лейбла
+    // Старые URL artist/dashboard и label/dashboard тоже пусть работают, если нужны
     Route::middleware('role:label')->prefix('label')->name('label.')->group(function () {
         Route::get('/dashboard', [LabelDashboardController::class, 'index'])->name('dashboard');
     });
 
-    // Группа артиста
     Route::middleware('role:artist')->prefix('artist')->name('artist.')->group(function () {
         Route::get('/dashboard', [ArtistDashboardController::class, 'index'])->name('dashboard');
     });
