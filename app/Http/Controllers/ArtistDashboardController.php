@@ -8,6 +8,6 @@ use Inertia\Inertia;
 class ArtistDashboardController extends Controller
 {
     public function index(){
-        return Inertia::render('ArtistDashboard');
+        return Inertia::render('Artist/Dashboard');
     }
 }

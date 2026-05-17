@@ -13,11 +13,17 @@ class CheckRole
      *
      * @param Closure(Request): (Response) $next
      */
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (auth()->check() && auth()->user()->role === $role) {
+        if (!auth()->check()) {
+            abort(403, 'Доступ запрещен');
+        }
+
+        // Проверяем, есть ли роль пользователя среди разрешенных
+        if (in_array(auth()->user()->role, $roles)) {
             return $next($request);
         }
+
         abort(403, 'Доступ запрещен');
     }
 }
