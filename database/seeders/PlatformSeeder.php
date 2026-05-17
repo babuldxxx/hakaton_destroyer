@@ -9,15 +9,17 @@ class PlatformSeeder extends Seeder
 {
     public function run(): void
     {
-        // Удалим старые кривые записи
-        Platform::query()->delete();
+        $platforms = [
+            ['name' => 'VK Music',       'slug' => 'vk-music',     'code' => 'vk'],
+            ['name' => 'Apple Music',    'slug' => 'apple-music',  'code' => 'apple'],
+            ['name' => 'Spotify',        'slug' => 'spotify',      'code' => 'spotify'],
+            ['name' => 'Яндекс Музыка',  'slug' => 'yandex-music', 'code' => 'yandex'],
+            ['name' => 'Deezer',         'slug' => 'deezer',       'code' => 'deezer'],
+            ['name' => 'YouTube Music',  'slug' => 'youtube-music','code' => 'youtube'],
+        ];
 
-        // Добавляем площадки с нормальной кириллицей
-        Platform::create(['name' => 'VK', 'code' => 'vk']);
-        Platform::create(['name' => 'Яндекс Музыка', 'code' => 'yandex']);
-        Platform::create(['name' => 'Apple Music', 'code' => 'apple']);
-        Platform::create(['name' => 'Spotify', 'code' => 'spotify']);
-        Platform::create(['name' => 'YouTube Music', 'code' => 'youtube']);
-        Platform::create(['name' => 'Deezer', 'code' => 'deezer']);
+        foreach ($platforms as $p) {
+            Platform::create($p);
+        }
     }
 }

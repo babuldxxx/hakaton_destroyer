@@ -7,7 +7,8 @@ use Inertia\Inertia;
 
 class LabelDashboardController extends Controller
 {
-    public function index(){
+    public function index()
+    {
         return Inertia::render('Dashboard/Label');
     }
 }

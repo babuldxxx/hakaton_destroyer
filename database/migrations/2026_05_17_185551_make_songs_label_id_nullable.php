@@ -9,22 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-Schema::create('platforms', function (Blueprint $table) {
-    $table->id();
-    $table->string('name');
-    $table->string('slug')->unique();
-    $table->string('icon')->nullable();
-    $table->timestamps();
-});
-    }
+public function up(): void
+{
+    Schema::table('songs', function (Blueprint $table) {
+        $table->foreignId('label_id')->nullable()->change();
+    });
+}
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('platforms');
+        Schema::table('songs', function (Blueprint $table) {
+            //
+        });
     }
 };

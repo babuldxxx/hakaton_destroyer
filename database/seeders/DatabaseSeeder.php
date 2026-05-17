@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0. Сначала запускаем PlatformSeeder для создания правильных площадок
+        $this->call(PlatformSeeder::class);
+
         // 1. Лейбл
         $label = Label::factory()->create(['name' => 'Test Label']);
 
@@ -54,9 +57,9 @@ class DatabaseSeeder extends Seeder
             'genre_id' => $genre->id,
         ]);
 
-        // 6. Две площадки (если у тебя нет PlatformSeeder, создаём тут)
-        $vk = Platform::factory()->create(['name' => 'VK', 'code' => 'vk']);
-        $ym = Platform::factory()->create(['name' => 'Яндекс Музыка', 'code' => 'yandex']);
+        // 6. Получаем созданные из PlatformSeeder площадки для связи с доходами
+        $vk = Platform::where('slug', 'vk-music')->first() ?? Platform::first();
+        $ym = Platform::where('slug', 'yandex-music')->first() ?? Platform::latest()->first();
 
         // 7. Авторы песен и доли
         foreach ($songs as $song) {
@@ -92,7 +95,7 @@ class DatabaseSeeder extends Seeder
             'song_id' => $songs->first()->id,
         ]);
 
-        // 10. Транзакции
+        // 10. Тразнакции
         Transaction::factory()->create([
             'user_id' => $artistUsers->first()->id,
             'artist_id' => $artists->first()->id,

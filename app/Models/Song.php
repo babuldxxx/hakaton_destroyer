@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Song extends Model
 {
@@ -18,6 +19,36 @@ class Song extends Model
         'written_at' => 'date',
         'released_at' => 'date',
     ];
+
+    // Автоматически добавляем аксессоры в JSON/массивы модели Inertia
+    protected $appends = ['cover_url', 'mp3_url', 'wav_url'];
+
+    // Аксессор для URL обложки трека
+    public function getCoverUrlAttribute(): ?string
+    {
+        if (!$this->cover_path) {
+            return '/images/default-cover.jpg';
+        }
+        return Storage::disk('public')->url($this->cover_path);
+    }
+
+    // Аксессор для URL MP3 файла
+    public function getMp3UrlAttribute(): ?string
+    {
+        if (!$this->mp3_path) {
+            return null;
+        }
+        return Storage::disk('public')->url($this->mp3_path);
+    }
+
+    // Аксессор для URL WAV файла
+    public function getWavUrlAttribute(): ?string
+    {
+        if (!$this->wav_path) {
+            return null;
+        }
+        return Storage::disk('public')->url($this->wav_path);
+    }
 
     public function label(): BelongsTo
     {
