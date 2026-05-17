@@ -17,6 +17,27 @@ Route::get('/', function () {
     ]);
 });
 
+// ВРЕМЕННО без middleware auth, чтобы верстать без логина
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard/Artist', [
+        'stats' => [
+            'balance' => '87 500 ₽',
+            'total_income' => '524 300 ₽',
+            'tracks_count' => '1',
+            'tracks_sub' => '+2 за месяц',
+            'paid_out' => '436 800 ₽',
+        ]
+    ]);
+})->name('temp.dashboard');
+
+Route::get('/tracks', function () {
+    return Inertia::render('Tracks/Index');
+})->name('temp.tracks');
+
+Route::get('/finances', function () {
+    return Inertia::render('Finances/Index');
+})->name('temp.finances');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
