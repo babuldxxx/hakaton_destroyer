@@ -2,24 +2,110 @@
 
 namespace Database\Seeders;
 
+use App\Enums\PayoutStatus;
+use App\Enums\RightsType;
+use App\Enums\SongAuthorRole;
+use App\Enums\TransactionType;
+use App\Enums\UserRole;
+use App\Models\Artist;
+use App\Models\CustomOrder;
+use App\Models\Genre;
+use App\Models\Label;
+use App\Models\Payout;
+use App\Models\Platform;
+use App\Models\Song;
+use App\Models\SongAuthor;
+use App\Models\SongPlatformEarning;
+use App\Models\Transaction;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // 1. Лейбл
+        $label = Label::factory()->create(['name' => 'Test Label']);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // 2. Менеджер лейбла (user с ролью label)
+        $labelUser = User::factory()->create([
+            'name' => 'Label Manager',
+            'email' => 'label@example.com',
+            'role' => UserRole::Label,
+            'label_id' => $label->id,
+        ]);
+
+        // 3. Два артиста (+ их пользователи)
+        $artistUsers = User::factory()->count(2)->create([
+            'role' => UserRole::Artist,
+        ]);
+
+        $artists = $artistUsers->map(fn ($user) => Artist::factory()->create([
+            'user_id' => $user->id,
+            'label_id' => $label->id,
+        ]));
+
+        // 4. Жанр
+        $genre = Genre::factory()->create(['name' => 'Pop']);
+
+        // 5. Три песни
+        $songs = Song::factory()->count(3)->create([
+            'label_id' => $label->id,
+            'genre_id' => $genre->id,
+        ]);
+
+        // 6. Две площадки (если у тебя нет PlatformSeeder, создаём тут)
+        $vk = Platform::factory()->create(['name' => 'VK', 'code' => 'vk']);
+        $ym = Platform::factory()->create(['name' => 'Яндекс Музыка', 'code' => 'yandex']);
+
+        // 7. Авторы песен и доли
+        foreach ($songs as $song) {
+            SongAuthor::factory()->create([
+                'song_id' => $song->id,
+                'artist_id' => $artists->first()->id,
+                'role' => SongAuthorRole::Composer,
+                'share_percentage' => 50.00,
+                'rights_type' => RightsType::Author,
+            ]);
+
+            SongAuthor::factory()->create([
+                'song_id' => $song->id,
+                'artist_id' => $artists->last()->id,
+                'role' => SongAuthorRole::Performer,
+                'share_percentage' => 50.00,
+                'rights_type' => RightsType::Related,
+            ]);
+        }
+
+        // 8. Доходы по песням
+        foreach ($songs as $song) {
+            SongPlatformEarning::factory()->create([
+                'song_id' => $song->id,
+                'platform_id' => $vk->id,
+                'amount' => 1500.00,
+            ]);
+        }
+
+        // 9. Один заказ (custom order)
+        $order = CustomOrder::factory()->create([
+            'label_id' => $label->id,
+            'song_id' => $songs->first()->id,
+        ]);
+
+        // 10. Транзакции
+        Transaction::factory()->create([
+            'user_id' => $artistUsers->first()->id,
+            'artist_id' => $artists->first()->id,
+            'song_id' => $songs->first()->id,
+            'platform_id' => $vk->id,
+            'type' => TransactionType::PlatformEarning,
+        ]);
+
+        // 11. Одна выплата
+        Payout::factory()->create([
+            'artist_id' => $artists->first()->id,
+            'status' => PayoutStatus::Completed,
+            'paid_at' => now(),
         ]);
     }
 }
