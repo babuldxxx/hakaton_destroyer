@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('song_authors', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('song_id')->constrained('songs')->cascadeOnDelete();
+            $table->foreignId('artist_id')->constrained('artists')->cascadeOnDelete();
+            $table->string('role');          // author / composer / performer
+            $table->decimal('share_percentage', 5, 2)->default(0);
+            $table->string('rights_type');   // author_rights / related_rights
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('song_authors');
+    }
+};
