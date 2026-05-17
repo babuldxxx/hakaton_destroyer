@@ -8,6 +8,6 @@ use Inertia\Inertia;
 class LabelDashboardController extends Controller
 {
     public function index(){
-        return Inertia::render('Label/Dashboard');
+        return Inertia::render('Dashboard/Label');
     }
 }
