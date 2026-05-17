@@ -11,19 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Раздельная проверка для роли
-        if (!Schema::hasColumn('users', 'role')) {
-            Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table) {
+            if (!Schema::hasColumn('users', 'role')) {
                 $table->string('role')->default('artist')->after('password');
-            });
-        }
+            }
 
-        // Раздельная проверка для label_id
-        if (!Schema::hasColumn('users', 'label_id')) {
-            Schema::table('users', function (Blueprint $table) {
+            if (!Schema::hasColumn('users', 'label_id')) {
                 $table->foreignId('label_id')->nullable()->after('role')->constrained('labels')->nullOnDelete();
-            });
-        }
+            }
+        });
     }
 
     /**

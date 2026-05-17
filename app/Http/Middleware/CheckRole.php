@@ -19,11 +19,16 @@ class CheckRole
             abort(403, 'Доступ запрещен');
         }
 
+        $user = auth()->user();
+
+        // Получаем строковое значение роли (поддержка string и enum)
+        $userRole = $user->role instanceof \BackedEnum ? $user->role->value : $user->role;
+
         // Проверяем, есть ли роль пользователя среди разрешенных
-        if (in_array(auth()->user()->role, $roles)) {
+        if (in_array($userRole, $roles)) {
             return $next($request);
         }
 
-        abort(403, 'Доступ запрещен');
+        abort(403, "Доступ запрещен. Ваша роль: {$userRole}, требуется: " . implode(', ', $roles));
     }
 }

@@ -40,14 +40,13 @@ Route::get('/dashboard', function () {
 
 Route::get('/finances', function () {
     return Inertia::render('Finances/Index');
-})->name('temp.finances');
+})->name('finances');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // ЕДИНЫЙ ДАШБОРД — URL остаётся /dashboard
     Route::get('/dashboard', function () {
         $user = auth()->user();
 
-        // Можно оставить как есть, если фронтендер сделал универсальный Dashboard.vue
         return Inertia::render('Dashboard', [
             'role' => $user->role,
         ]);
