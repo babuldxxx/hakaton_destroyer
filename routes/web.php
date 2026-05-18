@@ -28,7 +28,8 @@ Route::get('/finances', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        if ($user->role === 'label') {
+        $role = $user->role instanceof \BackedEnum ? $user->role->value : $user->role;
+        if ($role === 'label') {
             return redirect()->route('label.dashboard');
         }
         return redirect()->route('artist.dashboard');
