@@ -14,6 +14,30 @@ class ArtistController extends Controller
      * Детальная страница артиста.
      * GET /artists/{artist}
      */
+
+    public function index()
+    {
+        $this->authorize('viewAny', Artist::class);
+
+        $user = auth()->user();
+
+        // Если артист — сразу на свой профиль
+        if ($user->role->value === 'artist') {
+            return redirect()->route('artists.show', $user->artist);
+        }
+
+        // Лейбл — показать всех артистов его лейбла
+        $label = Label::query()->find($user->label_id);
+        $artists = Artist::query()->where('label_id', $label->id)
+            ->with('user')
+            ->get();
+
+        return Inertia::render('Artists/Index', [
+            'artists' => $artists,
+            'label' => $label,
+        ]);
+    }
+
     public function show(Artist $artist)
     {
         $this->authorize('view', $artist);

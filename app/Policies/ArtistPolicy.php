@@ -7,11 +7,19 @@ use App\Models\User;
 
 class ArtistPolicy
 {
-    // Вспомогательный метод для получения строковой роли
     private function role(User $user): string
     {
         $role = $user->role;
         return $role instanceof \BackedEnum ? (string) $role->value : $role->name;
+    }
+
+    /**
+     * Может ли пользователь просматривать список артистов.
+     */
+    public function viewAny(User $user): bool
+    {
+        $role = $this->role($user);
+        return in_array($role, ['label', 'artist']);
     }
 
     public function view(User $user, Artist $artist): bool
