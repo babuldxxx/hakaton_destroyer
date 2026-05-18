@@ -12,41 +12,41 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
-
 class SongController extends Controller
 {
+    private function ensureLabel(): void
+    {
+        $role = auth()->user()->role;
+        if ($role instanceof \BackedEnum) $role = $role->value;
+        if ($role !== 'label') abort(403, 'Только для лейбла.');
+    }
+
     public function index()
     {
         $songs = Song::with(['artists', 'genre', 'label', 'songAuthors.artist', 'platforms'])
             ->latest()
             ->paginate(20)
-            ->through(function (Song $song) {
-                return [
-                    'id'            => $song->id,
-                    'title'         => $song->title,
-                    'status'        => $song->status,
-                    'release_date'  => $song->released_at?->toDateString(),
-                    'genre'         => $song->genre,
-                    'label'         => $song->label,
-                    'artists'       => $song->artists,
-                    'cover_url'     => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : '/images/default-cover.jpg',
-                    'mp3_url'       => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
-                    'song_authors'  => $song->songAuthors,
-                    'platforms'     => $song->platforms->map(fn ($p) => [
-                        'id'   => $p->id,
-                        'name' => $p->name,
-                        'slug' => $p->slug,
-                    ]),
-                ];
-            });
+            ->through(fn (Song $song) => [
+                'id'           => $song->id,
+                'title'        => $song->title,
+                'status'       => $song->status,
+                'release_date' => $song->released_at?->toDateString(),
+                'genre'        => $song->genre,
+                'label'        => $song->label,
+                'artists'      => $song->artists,
+                'cover_url'    => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : '/images/default-cover.jpg',
+                'mp3_url'      => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
+                'song_authors' => $song->songAuthors,
+                'platforms'    => $song->platforms->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'slug' => $p->slug]),
+            ]);
 
-        return Inertia::render('Tracks/Index', [
-            'songs' => $songs,
-        ]);
+        return Inertia::render('Tracks/Index', ['tracks' => $songs]);
     }
 
     public function create()
     {
+        $this->ensureLabel();
+
         return Inertia::render('Tracks/Create', [
             'genres'    => Genre::select('id', 'name')->get(),
             'artists'   => Artist::select('id', 'real_name', 'stage_name')->get(),
@@ -56,6 +56,8 @@ class SongController extends Controller
 
     public function store(Request $request)
     {
+        $this->ensureLabel();
+
         $validated = $request->validate([
             'title'         => 'required|string|max:255',
             'lyrics'        => 'nullable|string',
@@ -112,42 +114,46 @@ class SongController extends Controller
 
     public function show(Song $song)
     {
-        $song->load(['artists', 'genre', 'label', 'songAuthors.artist', 'platforms', 'earnings.platform']);
+        $song->load(['genre', 'platforms', 'songAuthors.artist', 'earnings.platform']);
 
         return Inertia::render('Tracks/Show', [
             'song' => [
-                'id'            => $song->id,
-                'title'         => $song->title,
-                'lyrics'        => $song->lyrics,
-                'written_at'    => $song->written_at?->toDateString(),
-                'release_date'  => $song->released_at?->toDateString(),
-                'genre'         => $song->genre?->name ?? 'Без жанра',
-                'cover_url'     => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : '/images/default-cover.jpg',
-                'mp3_url'       => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
-                'artists'       => $song->artists->map(fn ($a) => $a->stage_name ?? $a->real_name),
-                'song_authors'  => $song->songAuthors,
-                'platforms'     => $song->platforms->map(fn ($p) => [
-                    'id'   => $p->id,
-                    'name' => $p->name,
-                    'slug' => $p->slug,
-                ]),
-                'platform_ids'  => $song->platforms->pluck('id'),
-
-                'earnings_list' => $song->earnings->map(fn ($e) => [
+                'id'             => $song->id,
+                'title'          => $song->title,
+                'lyrics'         => $song->lyrics,
+                'genre'          => $song->genre?->name ?? '—',
+                'release_date'   => $song->released_at?->toDateString() ?? '—',
+                'written_at'     => $song->written_at?->toDateString() ?? null,
+                'cover_url'      => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : null,
+                'mp3_url'        => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
+                'wav_url'        => $song->wav_path ? Storage::disk('public')->url($song->wav_path) : null,
+                'total_revenue'  => number_format($song->earnings->sum('amount'), 2, '.', ''),
+                'earnings_list'  => $song->earnings->map(fn ($e) => [
                     'id'       => $e->id,
-                    'platform' => $e->platform->name,
-                    'amount'   => number_format($e->amount, 2, '.', ' '),
-                    'period'   => $e->period_start?->format('m.Y') ?? '',
+                    'platform' => $e->platform?->name ?? '—',
+                    'period'   => $e->period_start?->format('Y-m') ?? '—',
+                    'amount'   => $e->amount,
                 ]),
-
-                'total_revenue' => number_format($song->earnings->sum('amount'), 2, '.', ' '),
+                'song_authors'   => $song->songAuthors->map(fn ($a) => [
+                    'id'               => $a->id,
+                    'share_percentage' => $a->share_percentage,
+                    'role'             => $a->role,
+                    'artist'           => $a->artist ? [
+                        'id'         => $a->artist->id,
+                        'real_name'  => $a->artist->real_name,
+                        'stage_name' => $a->artist->stage_name,
+                    ] : null,
+                ]),
             ],
+            'platforms' => Platform::select('id', 'name')->get(),
         ]);
     }
 
     public function edit(Song $song)
     {
-        $song->load('platforms');
+        $this->ensureLabel();
+
+        $song->load(['platforms', 'songAuthors']);
 
         return Inertia::render('Tracks/Edit', [
             'song' => [
@@ -157,8 +163,15 @@ class SongController extends Controller
                 'written_at'   => $song->written_at?->toDateString(),
                 'released_at'  => $song->released_at?->toDateString(),
                 'genre_id'     => $song->genre_id,
-                'label_id'     => $song->label_id,
                 'platform_ids' => $song->platforms->pluck('id'),
+                'song_authors' => $song->songAuthors->map(fn ($a) => [
+                    'artist_id'        => $a->artist_id,
+                    'share_percentage' => $a->share_percentage,
+                    'role'             => $a->role,
+                ]),
+                'cover_url' => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : null,
+                'mp3_url'   => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
+                'wav_url'   => $song->wav_path ? Storage::disk('public')->url($song->wav_path) : null,
             ],
             'genres'    => Genre::select('id', 'name')->get(),
             'artists'   => Artist::select('id', 'real_name', 'stage_name')->get(),
@@ -168,14 +181,23 @@ class SongController extends Controller
 
     public function update(Request $request, Song $song)
     {
+        $this->ensureLabel();
+
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'lyrics'      => 'nullable|string',
             'written_at'  => 'nullable|date',
             'released_at' => 'nullable|date',
             'genre_id'    => 'nullable|exists:genres,id',
+            'cover'       => 'nullable|image|max:5120',
+            'mp3'         => 'nullable|file|mimes:mp3|max:51200',
+            'wav'         => 'nullable|file|mimes:wav|max:512000',
             'platforms'   => 'nullable|array',
             'platforms.*' => 'integer|exists:platforms,id',
+            'authors'     => 'nullable|array',
+            'authors.*.artist_id'        => 'required_with:authors|exists:artists,id',
+            'authors.*.share_percentage' => 'required_with:authors|integer|min:0|max:100',
+            'authors.*.role'             => 'required_with:authors|string|in:author,performer,producer',
         ]);
 
         $song->update([
@@ -188,11 +210,53 @@ class SongController extends Controller
 
         $song->platforms()->sync($request->input('platforms', []));
 
+        // === ФАЙЛЫ ===
+        if ($request->hasFile('cover')) {
+            if ($song->cover_path) Storage::disk('public')->delete($song->cover_path);
+            $song->cover_path = $request->file('cover')->store('covers', 'public');
+        }
+        if ($request->hasFile('mp3')) {
+            if ($song->mp3_path) Storage::disk('public')->delete($song->mp3_path);
+            $song->mp3_path = $request->file('mp3')->store('tracks/mp3', 'public');
+        }
+        if ($request->hasFile('wav')) {
+            if ($song->wav_path) Storage::disk('public')->delete($song->wav_path);
+            $song->wav_path = $request->file('wav')->store('tracks/wav', 'public');
+        }
+        $song->save();
+
+        // === СИНХРОНИЗАЦИЯ АВТОРОВ ===
+        $song->songAuthors()->delete();
+        if (!empty($validated['authors'])) {
+            foreach ($validated['authors'] as $author) {
+                $song->songAuthors()->create([
+                    'artist_id'        => $author['artist_id'],
+                    'share_percentage' => $author['share_percentage'],
+                    'role'             => $author['role'],
+                ]);
+            }
+        }
+
         return redirect()->route('tracks.index')->with('success', 'Трек обновлён');
+    }
+
+    public function destroy(Song $song)
+    {
+        $this->ensureLabel();
+
+        if ($song->cover_path) Storage::disk('public')->delete($song->cover_path);
+        if ($song->mp3_path)  Storage::disk('public')->delete($song->mp3_path);
+        if ($song->wav_path)  Storage::disk('public')->delete($song->wav_path);
+
+        $song->delete();
+
+        return redirect()->route('tracks.index')->with('success', 'Трек удалён');
     }
 
     public function storeEarning(Request $request, Song $song)
     {
+        $this->ensureLabel();
+
         $validated = $request->validate([
             'platform_id' => 'required|exists:platforms,id',
             'amount'      => 'required|numeric|min:0',
