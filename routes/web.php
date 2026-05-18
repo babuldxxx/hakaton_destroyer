@@ -2,80 +2,61 @@
 
 use App\Http\Controllers\ArtistController;
 use App\Http\Controllers\ArtistDashboardController;
-use App\Http\Controllers\FileTestController;
 use App\Http\Controllers\LabelDashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SongController;
 use App\Http\Controllers\SongAuthorController;
 use App\Http\Controllers\PlatformController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+// === ГЛАВНАЯ ===
+Route::get('/', fn () => redirect()->route('login'));
 
-Route::get('/finances', function () {
-    return Inertia::render('Finances/Index');
-})->name('finances');
-
+// === ВСЁ, ЧТО ТРЕБУЕТ АВТОРИЗАЦИИ ===
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    // Центральный вход — редиректит по роли
     Route::get('/dashboard', function () {
-        $user = auth()->user();
-        $role = $user->role instanceof \BackedEnum ? $user->role->value : $user->role;
-        if ($role === 'label') {
-            return redirect()->route('label.dashboard');
-        }
-        return redirect()->route('artist.dashboard');
+        $role = auth()->user()->role;
+        $val = $role instanceof \BackedEnum ? $role->value : $role;
+
+        return $val === 'artist'
+            ? redirect()->route('artist.dashboard')
+            : redirect()->route('label.dashboard');
     })->name('dashboard');
 
-    // Группа лейбла
-    Route::middleware('role:label')->prefix('label')->name('label.')->group(function () {
-        Route::get('/dashboard', [LabelDashboardController::class, 'index'])->name('dashboard');
-    });
+    // --- ДАШБОРДЫ ---
+    Route::get('/label/dashboard', [LabelDashboardController::class, 'index'])->name('label.dashboard');
+    Route::get('/artist/dashboard', [ArtistDashboardController::class, 'index'])->name('artist.dashboard');
 
-    // Группа артиста
-    Route::middleware('role:artist')->prefix('artist')->name('artist.')->group(function () {
-        Route::get('/dashboard', [ArtistDashboardController::class, 'index'])->name('dashboard');
-    });
-});
+    // --- ФИНАНСЫ ---
+    Route::get('/finances', fn () => Inertia::render('Finances/Index'))->name('finances');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Тестовая загрузка
-    Route::get('/test-upload', [FileTestController::class, 'uploadForm']);
-    Route::post('/test-upload', [FileTestController::class, 'upload']);
-
-    Route::get('/platforms', [PlatformController::class, 'index'])->name('platforms.index');
-
-    // === ТРЕКИ ===
-    // Сохранение дохода — ОБЯЗАТЕЛЬНО до или после resource, внутри auth
-    Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])
-        ->name('tracks.earnings.store');
-
+    // --- ТРЕКИ ---
     Route::resource('tracks', SongController::class)
         ->parameters(['tracks' => 'song'])
         ->names('tracks');
+
+    // Доходы по треку (только для лейбла — проверка внутри SongController)
+    Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])
+        ->name('tracks.earnings.store');
 
     // Авторы трека
     Route::post('tracks/{song}/authors', [SongAuthorController::class, 'store'])->name('song-authors.store');
     Route::put('tracks/{song}/authors/{author}', [SongAuthorController::class, 'update'])->name('song-authors.update');
     Route::delete('tracks/{song}/authors/{author}', [SongAuthorController::class, 'destroy'])->name('song-authors.destroy');
 
-    // Артисты
-    Route::get('/artists', [ArtistController::class, 'index'])->name('artists.index');
-    Route::get('/artists/create', [ArtistController::class, 'create'])->name('artists.create');
-    Route::post('/artists', [ArtistController::class, 'store'])->name('artists.store');
-    Route::get('/artists/{artist}', [ArtistController::class, 'show'])->name('artists.show');
+    // --- АРТИСТЫ ---
+    Route::resource('artists', ArtistController::class);
+
+    // --- ПЛАТФОРМЫ ---
+    Route::get('/platforms', [PlatformController::class, 'index'])->name('platforms.index');
+
+    // --- ПРОФИЛЬ ---
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 require __DIR__.'/auth.php';
