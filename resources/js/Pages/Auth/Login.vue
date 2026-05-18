@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 import GuestLayout from '@/Layouts/GuestLayout.vue'
 
 const mode = ref('login')   // 'login' | 'forgot'
@@ -104,6 +105,16 @@ function submitForgot() {
                             >
                                 Забыли пароль?
                             </button>
+                        </div>
+
+                        <div class="pt-2 text-center"> 
+                            <Link :href="route('register')" 
+                            class="text-sm transition-colors 
+                            hover:text-violet-300" 
+                            style="color: #7C3AED;"
+                            > 
+                                Нет аккаунта? Зарегистрируйтесь!
+                            </Link> 
                         </div>
                     </form>
 
