@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
+use App\Models\SongPlatformEarning;
+use Carbon\Carbon;
 
 class Song extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'lyrics', 'written_at', 'released_at', 'label_id', 'wav_path', 'mp3_path', 'isrc', 'genre_id'];
+    protected $fillable = ['title', 'lyrics', 'written_at', 'released_at', 'label_id', 'wav_path', 'mp3_path', 'isrc', 'genre_id', 'cover_path'];
 
     protected $casts = [
         'written_at' => 'date',
@@ -70,7 +72,7 @@ class Song extends Model
         return $this->belongsToMany(Artist::class, 'song_authors');
     }
 
-    public function earnings(): HasMany
+    public function earnings()
     {
         return $this->hasMany(SongPlatformEarning::class);
     }
@@ -83,5 +85,11 @@ class Song extends Model
     public function customOrders(): HasMany
     {
         return $this->hasMany(CustomOrder::class);
+    }
+
+    // ДОБАВИЛИ СВЯЗЬ С ПЛОЩАДКАМИ
+    public function platforms(): BelongsToMany
+    {
+        return $this->belongsToMany(Platform::class, 'song_platform');
     }
 }
