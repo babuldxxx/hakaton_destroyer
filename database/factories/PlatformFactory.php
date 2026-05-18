@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\Platform;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Platform>
+ * @extends Factory<Platform>
  */
 class PlatformFactory extends Factory
 {
@@ -13,7 +14,8 @@ class PlatformFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'code' => fake()->unique()->word(),
+            'slug' => fake()->unique()->slug(),
+            'icon' => fake()->word(),
         ];
     }
 }

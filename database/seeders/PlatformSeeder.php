@@ -10,16 +10,16 @@ class PlatformSeeder extends Seeder
     public function run(): void
     {
         $platforms = [
-            ['name' => 'VK Music',       'slug' => 'vk-music',     'code' => 'vk'],
-            ['name' => 'Apple Music',    'slug' => 'apple-music',  'code' => 'apple'],
-            ['name' => 'Spotify',        'slug' => 'spotify',      'code' => 'spotify'],
-            ['name' => 'Яндекс Музыка',  'slug' => 'yandex-music', 'code' => 'yandex'],
-            ['name' => 'Deezer',         'slug' => 'deezer',       'code' => 'deezer'],
-            ['name' => 'YouTube Music',  'slug' => 'youtube-music','code' => 'youtube'],
+            ['name' => 'VK Music',       'slug' => 'vk-music',     'icon' => 'vk'],
+            ['name' => 'Apple Music',    'slug' => 'apple-music',  'icon' => 'apple'],
+            ['name' => 'Spotify',        'slug' => 'spotify',      'icon' => 'spotify'],
+            ['name' => 'Яндекс Музыка',  'slug' => 'yandex-music', 'icon' => 'yandex'],
+            ['name' => 'Deezer',         'slug' => 'deezer',       'icon' => 'deezer'],
+            ['name' => 'YouTube Music',  'slug' => 'youtube-music','icon' => 'youtube'],
         ];
 
         foreach ($platforms as $p) {
-            Platform::create($p);
+            Platform::factory()->create($p);
         }
     }
 }

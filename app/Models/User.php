@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
+ *
+ * @property int $id
  * @property string $name
  * @property string $email
  * @property string $password
@@ -22,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Label|null $label
  * @property-read Artist|null $artist
  */
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'label_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
