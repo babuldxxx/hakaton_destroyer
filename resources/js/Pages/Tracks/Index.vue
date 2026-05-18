@@ -4,28 +4,27 @@ import { Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import TrackItemCard from '@/Components/TrackItemCard.vue'
 
-// Получаем реальные данные от SongController
 const props = defineProps({
   songs: Object
 })
 
 const search = ref('')
 
-// Превращаем данные бэкенда в формат, который ждёт TrackItemCard
 const tracks = computed(() => {
   if (!props.songs?.data) return []
 
   return props.songs.data.map(song => ({
     id: song.id,
     title: song.title,
-    cover: song.cover_url || 'https://unsplash.com',
+    cover: song.cover_url || '/images/default-cover.jpg',
     genre: song.genre?.name || 'Без жанра',
-    release_date: song.released_at
-      ? new Date(song.released_at).toLocaleDateString('ru-RU')
+    // Контроллер уже присылает YYYY-MM-DD, можно безопасно отформатировать
+    release_date: song.release_date
+      ? new Date(song.release_date).toLocaleDateString('ru-RU')
       : '—',
     share: song.song_authors?.[0]?.share_percentage ?? 0,
-    platforms: ['VK Music', 'Apple Music', 'Яндекс Музыка'], // пока заглушка
-    total_revenue: '0', // пока заглушка, пока нет начислений
+    platforms: song.platforms || [],   // реальные площадки из БД
+    total_revenue: '0',
     earnings: '0'
   }))
 })
@@ -47,7 +46,7 @@ const filteredTracks = computed(() => {
         <div class="mb-8 flex items-center justify-between">
           <h1 class="text-[32px] font-bold" style="color: #F8FAFC;">Мои треки</h1>
           <Link 
-            href="/tracks/create" 
+            :href="route('tracks.create')" 
             class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-medium transition"
           >
             + Добавить трек
@@ -75,7 +74,7 @@ const filteredTracks = computed(() => {
           <Link
             v-for="track in filteredTracks"
             :key="track.id"
-            :href="`/tracks/${track.id}`"
+            :href="route('tracks.show', track.id)"
             class="block transition hover:opacity-90"
           >
             <TrackItemCard :track="track" />

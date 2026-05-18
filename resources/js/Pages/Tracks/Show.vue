@@ -1,136 +1,181 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { useForm, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
-  song: Object
+  song: {
+    type: Object,
+    required: true
+  }
 })
 
-function formatDate(dateString) {
-  if (!dateString) return '—'
-  return new Date(dateString).toLocaleDateString('ru-RU')
+const earningForm = useForm({
+  platform_id: props.song.platforms?.[0]?.id ?? null,
+  amount: '',
+  period: new Date().toISOString().slice(0, 7),
+})
+
+function addEarning() {
+  earningForm.post(route('tracks.earnings.store', props.song.id), {
+    preserveScroll: true,
+    onSuccess: () => earningForm.reset('amount'),
+  })
 }
 </script>
 
-<<template>
-  <Head :title="song.title" />
-
+<template>
   <AuthenticatedLayout>
-    <div class="min-h-screen bg-[#0B0E14] text-white p-6 md:p-10">
-      <div class="max-w-5xl mx-auto">
+    <div class="p-6 md:p-10 max-w-5xl mx-auto text-white">
 
-        <!-- Назад -->
-        <Link 
-          href="/tracks" 
-          class="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-          </svg>
-          Назад к трекам
-        </Link>
+      <!-- Шапка трека -->
+      <div class="flex flex-col md:flex-row gap-6 mb-8">
+        <div class="w-full md:w-64 shrink-0">
+          <div class="aspect-square rounded-xl overflow-hidden bg-gray-800 border border-gray-700">
+            <img :src="song.cover_url" class="w-full h-full object-cover" :alt="song.title" />
+          </div>
+        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+        <div class="flex-1">
+          <h1 class="text-3xl font-bold mb-2">{{ song.title }}</h1>
 
-          <!-- Левая колонка: обложка + плеер -->
-          <div class="lg:col-span-1">
-            <div class="aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-2xl mb-6">
-              <img 
-                :src="song.cover_url || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop'" 
-                :alt="song.title"
-                class="w-full h-full object-cover"
-              />
-            </div>
+          <p class="text-gray-400 mb-1">
+            Жанр: {{ song.genre }}
+            <span v-if="song.release_date && song.release_date !== '—'">• Релиз: {{ song.release_date }}</span>
+          </p>
+          <p v-if="song.written_at" class="text-gray-400 mb-3">Написана: {{ song.written_at }}</p>
 
-            <!-- Плеер MP3 -->
-            <div v-if="song.mp3_url" class="bg-[#1A1F2B] rounded-xl p-4 border border-gray-800">
-              <audio 
-                controls 
-                class="w-full h-10"
-                style="filter: invert(1) hue-rotate(180deg);"
-              >
-                <source :src="song.mp3_url" type="audio/mpeg">
-                Ваш браузер не поддерживает аудио.
-              </audio>
-              <div class="mt-3 flex items-center justify-between text-xs text-gray-500">
-                <span>MP3</span>
-                <a 
-                  v-if="song.wav_url" 
-                  :href="song.wav_url" 
-                  download 
-                  class="text-indigo-400 hover:text-indigo-300 transition"
-                >
-                  Скачать WAV
-                </a>
-              </div>
-            </div>
-
-            <!-- Нет файла -->
-            <div v-else class="bg-[#1A1F2B] rounded-xl p-6 text-center border border-gray-800 text-gray-500">
-              <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
-              </svg>
-              Аудиофайл не загружен
-            </div>
+          <!-- Площадки -->
+          <div v-if="song.platforms?.length" class="flex flex-wrap gap-2 mb-4">
+            <span
+              v-for="p in song.platforms"
+              :key="p.id"
+              class="inline-flex items-center rounded px-2 py-1 text-xs font-medium uppercase tracking-wide bg-gray-800 border border-gray-700 text-gray-300"
+            >
+              {{ p.name }}
+            </span>
+          </div>
+          <div v-else class="mb-4 text-xs text-gray-600">
+            Площадки не выбраны
           </div>
 
-          <!-- Правая колонка: инфо -->
-          <div class="lg:col-span-2 space-y-8">
-
-            <!-- Заголовок -->
-            <div>
-              <div class="flex items-center gap-3 mb-2">
-                <span 
-                  v-if="song.genre" 
-                  class="px-3 py-1 rounded-full text-xs font-medium bg-indigo-600/20 text-indigo-400 border border-indigo-600/30"
-                >
-                  {{ song.genre.name }}
-                </span>
-                <span class="text-sm text-gray-500">{{ formatDate(song.released_at) }}</span>
-              </div>
-              <h1 class="text-3xl md:text-4xl font-bold text-white">{{ song.title }}</h1>
-              <p v-if="song.lyrics" class="mt-4 text-gray-400 leading-relaxed whitespace-pre-line">{{ song.lyrics }}</p>
-            </div>
-
-            <!-- Авторы -->
-            <div class="bg-[#1A1F2B] rounded-xl border border-gray-800 overflow-hidden">
-              <div class="px-6 py-4 border-b border-gray-800 bg-gray-800/30">
-                <h2 class="font-semibold text-white">Авторы и доли</h2>
-              </div>
-              <div class="divide-y divide-gray-800">
-                <div 
-                  v-for="author in song.song_authors" 
-                  :key="author.id" 
-                  class="px-6 py-4 flex items-center justify-between"
-                >
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-400 font-bold">
-                      {{ (author.artist?.stage_name || author.artist?.real_name || 'A')[0] }}
-                    </div>
-                    <div>
-                      <div class="text-white font-medium">
-                        {{ author.artist?.stage_name || author.artist?.real_name || 'Неизвестный артист' }}
-                      </div>
-                      <div class="text-xs text-gray-500 capitalize">{{ author.role || 'автор' }}</div>
-                    </div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-lg font-semibold text-white">{{ author.share_percentage }}%</div>
-                    <div class="text-xs text-gray-500">доля</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Лейбл -->
-            <div v-if="song.label" class="flex items-center gap-3 text-sm text-gray-400">
-              <span>Лейбл:</span>
-              <span class="text-white font-medium">{{ song.label.name }}</span>
-            </div>
-
+          <!-- Плеер -->
+          <div v-if="song.mp3_url" class="mt-2">
+            <audio controls class="w-full">
+              <source :src="song.mp3_url" type="audio/mpeg" />
+            </audio>
           </div>
         </div>
       </div>
+
+      <!-- Текст -->
+      <div
+        v-if="song.lyrics"
+        class="mb-8 rounded-xl border p-5"
+        style="background-color: #1A1F2B; border-color: #2D3748;"
+      >
+        <h3 class="text-lg font-semibold mb-3">Текст песни</h3>
+        <pre class="whitespace-pre-wrap text-sm text-gray-300 font-sans">{{ song.lyrics }}</pre>
+      </div>
+
+      <!-- Блок доходов -->
+      <div
+        class="rounded-xl border p-5"
+        style="background-color: #1A1F2B; border-color: #2D3748;"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Доходы по площадкам</h3>
+          <span v-if="song.total_revenue !== '0.00'" class="text-sm text-gray-400">
+            Всего: <strong class="text-white">{{ song.total_revenue }} ₽</strong>
+          </span>
+        </div>
+
+        <!-- Список начислений -->
+        <div v-if="song.earnings_list?.length" class="space-y-2 mb-6">
+          <div
+            v-for="e in song.earnings_list"
+            :key="e.id"
+            class="flex items-center justify-between p-3 rounded bg-gray-800/50"
+          >
+            <span class="text-sm text-gray-300">{{ e.platform }} — {{ e.period }}</span>
+            <span class="text-sm font-medium text-white">{{ e.amount }} ₽</span>
+          </div>
+          <div class="flex justify-between pt-3 border-t border-gray-700 text-white font-semibold">
+            <span>Итого</span>
+            <span>{{ song.total_revenue }} ₽</span>
+          </div>
+        </div>
+        <div v-else class="text-sm text-gray-500 mb-6">
+          Пока нет начислений.
+        </div>
+
+        <!-- Форма добавления -->
+        <form
+          v-if="song.platforms?.length"
+          @submit.prevent="addEarning"
+          class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end"
+        >
+          <div class="md:col-span-2">
+            <label class="block text-xs text-gray-400 mb-1">Площадка</label>
+            <select
+              v-model="earningForm.platform_id"
+              required
+              class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+            >
+              <option v-for="p in song.platforms" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+            <div v-if="earningForm.errors.platform_id" class="text-red-400 text-xs mt-1">
+              {{ earningForm.errors.platform_id }}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Сумма (₽)</label>
+            <input
+              v-model.number="earningForm.amount"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+            />
+            <div v-if="earningForm.errors.amount" class="text-red-400 text-xs mt-1">
+              {{ earningForm.errors.amount }}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-gray-400 mb-1">Период</label>
+            <input
+              v-model="earningForm.period"
+              type="month"
+              required
+              class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+            />
+          </div>
+
+          <div class="md:col-span-4">
+            <button
+              type="submit"
+              :disabled="earningForm.processing"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
+            >
+              {{ earningForm.processing ? 'Сохраняем...' : '+ Добавить начисление' }}
+            </button>
+          </div>
+        </form>
+
+        <div v-else class="text-xs text-gray-600">
+          Сначала прикрепите площадки к треку через «Редактировать».
+        </div>
+      </div>
+
+      <!-- Назад -->
+      <div class="mt-8">
+        <Link :href="route('tracks.index')" class="text-sm text-gray-400 hover:text-white transition">
+          ← Назад к трекам
+        </Link>
+      </div>
+
     </div>
   </AuthenticatedLayout>
 </template>

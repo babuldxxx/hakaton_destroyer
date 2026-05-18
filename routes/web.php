@@ -56,14 +56,21 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/platforms', [PlatformController::class, 'index'])->name('platforms.index');
 
+    // === ТРЕКИ ===
+    // Сохранение дохода — ОБЯЗАТЕЛЬНО до или после resource, внутри auth
+    Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])
+        ->name('tracks.earnings.store');
+
     Route::resource('tracks', SongController::class)
         ->parameters(['tracks' => 'song'])
         ->names('tracks');
 
+    // Авторы трека
     Route::post('tracks/{song}/authors', [SongAuthorController::class, 'store'])->name('song-authors.store');
     Route::put('tracks/{song}/authors/{author}', [SongAuthorController::class, 'update'])->name('song-authors.update');
     Route::delete('tracks/{song}/authors/{author}', [SongAuthorController::class, 'destroy'])->name('song-authors.destroy');
 
+    // Артисты
     Route::get('/artists', [ArtistController::class, 'index'])->name('artists.index');
     Route::get('/artists/create', [ArtistController::class, 'create'])->name('artists.create');
     Route::post('/artists', [ArtistController::class, 'store'])->name('artists.store');
