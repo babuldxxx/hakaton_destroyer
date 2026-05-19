@@ -10,50 +10,57 @@ use App\Http\Controllers\PlatformController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// === ГЛАВНАЯ ===
 Route::get('/', fn () => redirect()->route('login'));
 
-// === ВСЁ, ЧТО ТРЕБУЕТ АВТОРИЗАЦИИ ===
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // Центральный вход — редиректит по роли
     Route::get('/dashboard', function () {
-        $role = auth()->user()->role;
-        $val = $role instanceof \BackedEnum ? $role->value : $role;
+        $user = auth()->user();
 
-        return $val === 'artist'
-            ? redirect()->route('artist.dashboard')
-            : redirect()->route('label.dashboard');
+        if ($user->hasRole('artist')) {
+            return redirect()->route('artist.dashboard');
+        }
+        return redirect()->route('label.dashboard');
     })->name('dashboard');
 
-    // --- ДАШБОРДЫ ---
-    Route::get('/label/dashboard', [LabelDashboardController::class, 'index'])->name('label.dashboard');
-    Route::get('/artist/dashboard', [ArtistDashboardController::class, 'index'])->name('artist.dashboard');
+    Route::middleware('role:label')->group(function () {
+        Route::get('/label/dashboard', [LabelDashboardController::class, 'index'])->name('label.dashboard');
+    });
 
-    // --- ФИНАНСЫ ---
+    Route::middleware('role:artist')->group(function () {
+        Route::get('/artist/dashboard', [ArtistDashboardController::class, 'index'])->name('artist.dashboard');
+    });
+
     Route::get('/finances', fn () => Inertia::render('Finances/Index'))->name('finances');
 
-    // --- ТРЕКИ ---
     Route::resource('tracks', SongController::class)
         ->parameters(['tracks' => 'song'])
         ->names('tracks');
-
-    // Доходы по треку (только для лейбла — проверка внутри SongController)
     Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])
         ->name('tracks.earnings.store');
-
-    // Авторы трека
     Route::post('tracks/{song}/authors', [SongAuthorController::class, 'store'])->name('song-authors.store');
     Route::put('tracks/{song}/authors/{author}', [SongAuthorController::class, 'update'])->name('song-authors.update');
     Route::delete('tracks/{song}/authors/{author}', [SongAuthorController::class, 'destroy'])->name('song-authors.destroy');
 
-    // --- АРТИСТЫ ---
-    Route::resource('artists', ArtistController::class);
+    // Список артистов и просмотр
+    Route::get('/artists', [ArtistController::class, 'index'])->name('artists.index');
+    Route::get('/artists/{artist}', [ArtistController::class, 'show'])->name('artists.show');
 
-    // --- ПЛАТФОРМЫ ---
+    // Приглашения (лейбл)
+    Route::post('/artists/{artist}/invite', [ArtistController::class, 'invite'])->name('artists.invite');
+
+    // Приглашения (артист)
+    Route::get('/artists/invitations', [ArtistController::class, 'invitations'])->name('artists.invitations');
+    Route::post('/artists/invitations/{invitation}/accept', [ArtistController::class, 'acceptInvitation'])->name('artists.invitations.accept');
+    Route::post('/artists/invitations/{invitation}/decline', [ArtistController::class, 'declineInvitation'])->name('artists.invitations.decline');
+    // Редактирование и отвязка
+    Route::get('/artists/{artist}/edit', [ArtistController::class, 'edit'])->name('artists.edit');
+    Route::put('/artists/{artist}', [ArtistController::class, 'update'])->name('artists.update');
+    Route::delete('/artists/{artist}', [ArtistController::class, 'destroy'])->name('artists.destroy');
+
+
     Route::get('/platforms', [PlatformController::class, 'index'])->name('platforms.index');
 
-    // --- ПРОФИЛЬ ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
