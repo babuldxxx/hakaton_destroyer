@@ -4,10 +4,15 @@ import { computed } from 'vue'
 
 const page = usePage()
 
-// Fallback для разработки без бэкенда
-const user = computed(() => page.props.auth?.user ?? {
-    name: 'Мария Светлова',
-    role: 'Артист'
+const user = computed(() => {
+    const authUser = page.props.auth?.user
+    if (authUser) {
+        return {
+            name: authUser.name,
+            role: authUser.roles?.[0] ?? 'artist'  // берём первую роль
+        }
+    }
+    return { name: 'Мария Светлова', role: 'Артист' }
 })
 
 const menuItems = [

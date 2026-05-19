@@ -3,45 +3,49 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artist;
+use App\Models\Invitation;
 use App\Models\Label;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ArtistController extends Controller
 {
-    /**
-     * Детальная страница артиста.
-     * GET /artists/{artist}
-     */
-
+    // ---------- просмотр списка ----------
     public function index()
     {
         $this->authorize('viewAny', Artist::class);
-
         $user = auth()->user();
 
-        // Если артист — сразу на свой профиль
-        if ($user->role->value === 'artist') {
+        if ($user->hasRole('artist')) {
             return redirect()->route('artists.show', $user->artist);
         }
 
-        // Лейбл — показать всех артистов его лейбла
-        $label = Label::query()->find($user->label_id);
-        $artists = Artist::query()->where('label_id', $label->id)
+        $label = Label::where('id', $user->label_id)->first();
+        if (!$label) {
+            abort(403, 'У вас нет привязанного лейбла.');
+        }
+
+        $myArtists = Artist::where('label_id', $label->id)
+            ->where('status', 'approved')
+            ->with('user')
+            ->get();
+
+        $pendingArtists = Artist::whereNull('label_id')
+            ->where('status', 'pending')
             ->with('user')
             ->get();
 
         return Inertia::render('Artists/Index', [
-            'artists' => $artists,
-            'label' => $label,
+            'artists'        => $myArtists,
+            'pendingArtists' => $pendingArtists,
+            'label'          => $label,
         ]);
     }
 
+    // ---------- карточка артиста ----------
     public function show(Artist $artist)
     {
         $this->authorize('view', $artist);
-
         $artist->load(['user', 'songs']);
 
         return Inertia::render('Artists/Show', [
@@ -49,57 +53,132 @@ class ArtistController extends Controller
         ]);
     }
 
-    /**
-     * Форма создания артиста.
-     * GET /artists/create
-     */
-    public function create()
+    // ---------- пригласить артиста (лейбл) ----------
+    public function invite(Request $request, Artist $artist)
     {
-        $this->authorize('create', Artist::class);
+        $this->authorize('invite', $artist);
 
-        return Inertia::render('Artists/Create');
-    }
-
-    /**
-     * Создание нового артиста и привязка к лейблу.
-     * POST /artists
-     */
-    public function store(Request $request)
-    {
-        $this->authorize('create', Artist::class);
-
-        $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'name' => 'required|string|max:255',
-            'stage_name' => 'required|string|max:255',
-            'password' => 'required|string|min:8',
-        ]);
-
-        // Получаем лейбл текущего пользователя
-        $label = Label::query()->find(auth()->user()->label_id);
-
+        $label = Label::where('id', auth()->user()->label_id)->first();
         if (!$label) {
-            abort(403, 'У вас нет привязанного лейбла');
+            abort(403, 'У вас нет привязанного лейбла.');
         }
 
-        // Создаём пользователя с ролью artist и привязкой к лейблу
-        $user = User::query()->create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-            'role' => 'artist',
-            'label_id' => $label->id,
+        $existing = Invitation::where('artist_id', $artist->id)
+            ->where('label_id', $label->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existing) {
+            return back()->with('error', 'Приглашение уже отправлено.');
+        }
+
+        Invitation::create([
+            'label_id'  => $label->id,
+            'artist_id' => $artist->id,
+            'status'    => 'pending',
         ]);
 
-        // Создаём артиста
-        $artist = Artist::query()->create([
-            'user_id' => $user->id,
-            'label_id' => $label->id,
-            'stage_name' => $request->stage_name,
-            'real_name' => $request->name,
+        return back()->with('success', 'Приглашение отправлено артисту.');
+    }
+
+    // ---------- список приглашений (артист) ----------
+    public function invitations()
+    {
+        $this->authorize('viewAny', Artist::class);
+        $user = auth()->user();
+
+        if (!$user->hasRole('artist')) {
+            abort(403);
+        }
+
+        $artist = $user->artist;
+        if (!$artist) {
+            abort(404, 'Профиль артиста не найден.');
+        }
+
+        $invitations = Invitation::where('artist_id', $artist->id)
+            ->with('label')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Artists/Invitations', [
+            'invitations' => $invitations,
         ]);
+    }
+
+    // ---------- принять приглашение (артист) ----------
+    public function acceptInvitation(Invitation $invitation)
+    {
+        $this->authorize('respondToInvitation', $invitation);
+
+        if ($invitation->status !== 'pending') {
+            return back()->with('error', 'Приглашение уже обработано.');
+        }
+
+        $invitation->update(['status' => 'accepted']);
+
+        $artist = $invitation->artist;
+        $artist->update([
+            'label_id' => $invitation->label_id,
+            'status'   => 'approved',
+        ]);
+
+        return redirect()->route('artist.dashboard')
+            ->with('success', 'Вы успешно присоединились к лейблу!');
+    }
+
+    // ---------- отклонить приглашение (артист) ----------
+    public function declineInvitation(Invitation $invitation)
+    {
+        $this->authorize('respondToInvitation', $invitation);
+
+        if ($invitation->status !== 'pending') {
+            return back()->with('error', 'Приглашение уже обработано.');
+        }
+
+        $invitation->update(['status' => 'declined']);
+
+        return back()->with('success', 'Приглашение отклонено.');
+    }
+
+    // ---------- отвязать артиста от лейбла (бывшее удаление) ----------
+    public function destroy(Artist $artist)
+    {
+        $this->authorize('delete', $artist); // политика detach
+
+        $artist->update([
+            'label_id' => null,
+            'status'   => 'pending',
+        ]);
+
+        // Опционально: отменить активные приглашения от этого лейбла
+        Invitation::where('artist_id', $artist->id)
+            ->where('status', 'pending')
+            ->delete();
+
+        return back()->with('success', 'Артист отвязан от лейбла.');
+    }
+
+    // ---------- редактирование (опционально) ----------
+    public function edit(Artist $artist)
+    {
+        $this->authorize('update', $artist);
+        return Inertia::render('Artists/Edit', ['artist' => $artist]);
+    }
+
+    public function update(Request $request, Artist $artist)
+    {
+        $this->authorize('update', $artist);
+
+        $validated = $request->validate([
+            'stage_name' => 'required|string|max:255',
+            'real_name'  => 'nullable|string|max:255',
+            'bio'        => 'nullable|string',
+        ]);
+
+        $artist->update($validated);
 
         return redirect()->route('artists.show', $artist)
-            ->with('success', 'Артист добавлен');
+            ->with('success', 'Данные обновлены');
     }
 }
