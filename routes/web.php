@@ -13,10 +13,8 @@ use Inertia\Inertia;
 Route::get('/', fn () => redirect()->route('login'));
 
 Route::middleware(['auth', 'verified'])->group(function () {
-
     Route::get('/dashboard', function () {
         $user = auth()->user();
-
         if ($user->hasRole('artist')) {
             return redirect()->route('artist.dashboard');
         }
@@ -36,28 +34,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('tracks', SongController::class)
         ->parameters(['tracks' => 'song'])
         ->names('tracks');
-    Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])
-        ->name('tracks.earnings.store');
+    Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])->name('tracks.earnings.store');
     Route::post('tracks/{song}/authors', [SongAuthorController::class, 'store'])->name('song-authors.store');
     Route::put('tracks/{song}/authors/{author}', [SongAuthorController::class, 'update'])->name('song-authors.update');
     Route::delete('tracks/{song}/authors/{author}', [SongAuthorController::class, 'destroy'])->name('song-authors.destroy');
 
-    // Список артистов и просмотр
     Route::get('/artists', [ArtistController::class, 'index'])->name('artists.index');
     Route::get('/artists/{artist}', [ArtistController::class, 'show'])->name('artists.show');
-
-    // Приглашения (лейбл)
     Route::post('/artists/{artist}/invite', [ArtistController::class, 'invite'])->name('artists.invite');
-
-    // Приглашения (артист)
     Route::get('/artists/invitations', [ArtistController::class, 'invitations'])->name('artists.invitations');
     Route::post('/artists/invitations/{invitation}/accept', [ArtistController::class, 'acceptInvitation'])->name('artists.invitations.accept');
     Route::post('/artists/invitations/{invitation}/decline', [ArtistController::class, 'declineInvitation'])->name('artists.invitations.decline');
-    // Редактирование и отвязка
     Route::get('/artists/{artist}/edit', [ArtistController::class, 'edit'])->name('artists.edit');
     Route::put('/artists/{artist}', [ArtistController::class, 'update'])->name('artists.update');
     Route::delete('/artists/{artist}', [ArtistController::class, 'destroy'])->name('artists.destroy');
-
 
     Route::get('/platforms', [PlatformController::class, 'index'])->name('platforms.index');
 

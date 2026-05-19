@@ -128,7 +128,7 @@ function submit() {
             <div class="md:col-span-1 flex items-start">
               <button type="button" @click="removeAuthor(index)"
                 class="w-full h-[38px] text-red-400 hover:text-red-300 hover:bg-gray-800 rounded border border-gray-700 transition"
-                title="Удалить">✕</button>
+                title="Выгнать из лейбла">✕</button>
             </div>
           </div>
         </div>

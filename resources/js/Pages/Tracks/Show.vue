@@ -5,35 +5,58 @@ import { computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 
 const page = usePage()
-const isLabel = computed(() => page.props.auth.user?.role === 'label')
+const isLabel = computed(() => {
+  const role = page.props.auth.user?.role
+  return (typeof role === 'string' ? role : role?.value) === 'label'
+})
 
 const props = defineProps({
   song: { type: Object, required: true },
   platforms: { type: Array, default: () => [] },
 })
 
-// Начисления
-const earningForm = useForm({
-  platform_id: props.platforms[0]?.id ?? null,
-  amount: '',
-  period: new Date().toISOString().slice(0, 7),
-})
-
-function addEarning() {
-  earningForm.post(route('tracks.earnings.store', props.song.id), {
-    preserveScroll: true,
-    onSuccess: () => earningForm.reset('amount'),
-  })
-}
-
 const roleLabels = {
   author: 'Автор',
   performer: 'Исполнитель',
   producer: 'Продюсер',
 }
+
+const rightsLabels = {
+  author_rights: 'Авторское право',
+  related_rights: 'Смежное право',
+}
+
+const txTypeLabels = {
+  label_share: 'Доля лейбла',
+  author_rights: 'Авторское право',
+  related_rights: 'Смежное право',
+  production_rights: 'Продюсер',
+  unallocated: 'Не распределено',
+}
+
+const txStatusLabels = {
+  pending: 'В ожидании',
+  on_hold: 'Заморожено',
+  paid: 'Выплачено',
+  cancelled: 'Отменено',
+}
+
+const earningForm = useForm({
+  platform_id: props.platforms[0]?.id ?? null,
+  gross_amount: '',
+  period: new Date().toISOString().slice(0, 7),
+  label_share_percent: 0,
+})
+
+function addEarning() {
+  earningForm.post(route('tracks.earnings.store', props.song.id), {
+    preserveScroll: true,
+    onSuccess: () => earningForm.reset('gross_amount'),
+  })
+}
 </script>
 
-<template>
+<<template>
   <AuthenticatedLayout>
     <div class="p-6 md:p-10 max-w-5xl mx-auto text-white">
 
@@ -41,12 +64,7 @@ const roleLabels = {
       <div class="flex flex-col md:flex-row gap-6 mb-8">
         <div class="w-full md:w-64 shrink-0">
           <div class="aspect-square rounded-xl overflow-hidden bg-gray-800 border border-gray-700 flex items-center justify-center">
-            <img
-              v-if="song.cover_url"
-              :src="song.cover_url"
-              class="w-full h-full object-cover"
-              :alt="song.title"
-            />
+            <img v-if="song.cover_url" :src="song.cover_url" class="w-full h-full object-cover" :alt="song.title" />
             <span v-else class="text-gray-500 text-sm">Нет обложки</span>
           </div>
         </div>
@@ -69,7 +87,6 @@ const roleLabels = {
           </p>
           <p v-if="song.written_at" class="text-gray-400 mb-3">Написана: {{ song.written_at }}</p>
 
-          <!-- РАБОТАЮЩИЙ ПЛЕЕР -->
           <div v-if="song.mp3_url" class="mt-2">
             <audio controls class="w-full">
               <source :src="song.mp3_url" type="audio/mpeg" />
@@ -79,24 +96,20 @@ const roleLabels = {
           <div v-else class="mt-2 text-sm text-gray-600">Аудиофайл не загружен</div>
 
           <div v-if="song.wav_url" class="mt-3">
-            <a
-              :href="song.wav_url"
-              download
-              class="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm font-medium"
-            >
+            <a :href="song.wav_url" download class="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-sm font-medium">
               ⬇️ Скачать WAV
             </a>
           </div>
         </div>
       </div>
 
-      <!-- Текст песни -->
+      <!-- Текст -->
       <div v-if="song.lyrics" class="mb-6 rounded-xl border p-5" style="background-color: #1A1F2B; border-color: #2D3748;">
         <h3 class="text-lg font-semibold mb-3">Текст песни</h3>
         <pre class="whitespace-pre-wrap text-sm text-gray-300 font-sans">{{ song.lyrics }}</pre>
       </div>
 
-      <!-- АВТОРЫ И ДОЛИ -->
+      <!-- Авторы и доли -->
       <div class="mb-6 rounded-xl border p-5" style="background-color: #1A1F2B; border-color: #2D3748;">
         <h3 class="text-lg font-semibold mb-4">Авторы и доли</h3>
 
@@ -106,12 +119,15 @@ const roleLabels = {
             :key="author.id"
             class="flex items-center justify-between py-2.5 border-b border-gray-700/30 last:border-0"
           >
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
               <span class="text-white font-medium">
                 {{ author.artist?.stage_name || author.artist?.real_name || 'Неизвестный артист' }}
               </span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 border border-gray-600">
                 {{ roleLabels[author.role] || author.role }}
+              </span>
+              <span v-if="author.rights_type" class="text-xs px-2 py-0.5 rounded-full bg-indigo-900/50 text-indigo-300 border border-indigo-800/50">
+                {{ rightsLabels[author.rights_type] || author.rights_type }}
               </span>
             </div>
             <span class="text-gray-400 text-sm font-medium">{{ author.share_percentage }}%</span>
@@ -120,12 +136,12 @@ const roleLabels = {
         <p v-else class="text-gray-500 text-sm">Авторы не указаны.</p>
       </div>
 
-      <!-- Доходы по площадкам -->
-      <div class="rounded-xl border p-5" style="background-color: #1A1F2B; border-color: #2D3748;">
+      <!-- Доходы от дистрибьютора (gross) -->
+      <div class="mb-6 rounded-xl border p-5" style="background-color: #1A1F2B; border-color: #2D3748;">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Доходы по площадкам</h3>
-          <span v-if="song.total_revenue !== '0.00'" class="text-sm text-gray-400">
-            Всего: <strong class="text-white">{{ song.total_revenue }} ₽</strong>
+          <h3 class="text-lg font-semibold">Доходы от дистрибьютора</h3>
+          <span v-if="song.total_revenue && song.total_revenue !== '0.00'" class="text-sm text-gray-400">
+            Всего gross: <strong class="text-white">{{ song.total_revenue }} ₽</strong>
           </span>
         </div>
 
@@ -135,61 +151,118 @@ const roleLabels = {
             :key="e.id"
             class="flex items-center justify-between p-3 rounded bg-gray-800/50"
           >
-            <span class="text-sm text-gray-300">{{ e.platform }} — {{ e.period }}</span>
-            <span class="text-sm font-medium text-white">{{ e.amount }} ₽</span>
+            <div class="text-sm text-gray-300">
+              {{ e.platform }} — {{ e.period }}
+              <span v-if="e.label_share_percent > 0" class="text-xs text-gray-500 ml-1">
+                (лейбл {{ e.label_share_percent }}%)
+              </span>
+            </div>
+            <span class="text-sm font-medium text-white">{{ e.gross_amount }} ₽</span>
           </div>
           <div class="flex justify-between pt-3 border-t border-gray-700 text-white font-semibold">
             <span>Итого</span>
             <span>{{ song.total_revenue }} ₽</span>
           </div>
         </div>
-        <div v-else class="text-sm text-gray-500 mb-6">Пока нет начислений.</div>
+        <div v-else class="text-sm text-gray-500 mb-6">Пока нет внесённых доходов.</div>
 
-        <form
-          v-if="platforms.length && isLabel"
-          @submit.prevent="addEarning"
-          class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end"
-        >
-          <div class="md:col-span-2">
-            <label class="block text-xs text-gray-400 mb-1">Площадка</label>
-            <select
-              v-model="earningForm.platform_id"
-              required
-              class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
-            >
-              <option v-for="p in platforms" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
+        <!-- Форма только для лейбла -->
+        <form v-if="platforms.length && isLabel" @submit.prevent="addEarning" class="space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div class="md:col-span-2">
+              <label class="block text-xs text-gray-400 mb-1">Площадка</label>
+              <select
+                v-model="earningForm.platform_id"
+                required
+                class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+              >
+                <option v-for="p in platforms" :key="p.id" :value="p.id">{{ p.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Сумма gross (₽)</label>
+              <input
+                v-model.number="earningForm.gross_amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Период</label>
+              <input
+                v-model="earningForm.period"
+                type="month"
+                required
+                class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+              />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs text-gray-400 mb-1">Доля лейбла (%)</label>
+              <input
+                v-model.number="earningForm.label_share_percent"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
+              />
+              <p class="text-xs text-gray-500 mt-1">Остаток уйдёт авторам автоматически</p>
+            </div>
+            <div class="md:col-span-2 flex items-end">
+              <button
+                type="submit"
+                :disabled="earningForm.processing"
+                class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
+              >
+                {{ earningForm.processing ? 'Сохраняем...' : '+ Добавить начисление' }}
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1">Сумма (₽)</label>
-            <input
-              v-model.number="earningForm.amount"
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
-            />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1">Период</label>
-            <input
-              v-model="earningForm.period"
-              type="month"
-              required
-              class="w-full bg-gray-900 border border-gray-700 rounded p-2.5 text-white text-sm focus:border-indigo-500 outline-none"
-            />
-          </div>
-          <div class="md:col-span-4">
-            <button
-              type="submit"
-              :disabled="earningForm.processing"
-              class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
-            >
-              {{ earningForm.processing ? 'Сохраняем...' : '+ Добавить начисление' }}
-            </button>
+          <div v-if="Object.keys(earningForm.errors).length" class="space-y-1">
+            <div v-for="(err, key) in earningForm.errors" :key="key" class="text-red-500 text-xs">{{ err }}</div>
           </div>
         </form>
+      </div>
+
+      <!-- Распределение доходов (transactions) -->
+      <div class="rounded-xl border p-5" style="background-color: #1A1F2B; border-color: #2D3748;">
+        <h3 class="text-lg font-semibold mb-4">Распределение доходов</h3>
+
+        <div v-if="song.transactions_list?.length" class="space-y-2">
+          <div
+            v-for="tx in song.transactions_list"
+            :key="tx.id"
+            class="flex items-center justify-between p-3 rounded bg-gray-800/50"
+          >
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="text-white font-medium text-sm">{{ tx.recipient }}</span>
+              <span
+                class="text-xs px-2 py-0.5 rounded-full border"
+                :class="{
+                  'bg-emerald-900/30 text-emerald-400 border-emerald-800/40': tx.type === 'label_share',
+                  'bg-blue-900/30 text-blue-400 border-blue-800/40': tx.type === 'author_rights',
+                  'bg-purple-900/30 text-purple-400 border-purple-800/40': tx.type === 'related_rights',
+                  'bg-gray-700/40 text-gray-400 border-gray-600': tx.type === 'unallocated',
+                }"
+              >
+                {{ txTypeLabels[tx.type] || tx.type }}
+              </span>
+              <span class="text-xs text-gray-500">{{ tx.platform }} — {{ tx.period }}</span>
+            </div>
+            <div class="text-right">
+              <div class="text-sm font-medium text-white">{{ tx.amount }} ₽</div>
+              <div class="text-xs" :class="tx.status === 'paid' ? 'text-emerald-400' : 'text-gray-500'">
+                {{ txStatusLabels[tx.status] || tx.status }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-sm text-gray-500">
+          Пока нет распределённых начислений. Лейбл должен внести доход от площадки, после чего система автоматически рассчитает доли.
+        </div>
       </div>
 
       <div class="mt-8">

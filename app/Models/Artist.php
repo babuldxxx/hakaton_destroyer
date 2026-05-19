@@ -8,15 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- *
- * @property int $id
- * @property int $user_id
- * @property int|null $label_id
- * @property string $stage_name
- * @property string|null $real_name
- * @property string|null $bio
- */
 class Artist extends Model
 {
     use HasFactory;
@@ -56,5 +47,12 @@ class Artist extends Model
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    public function balance(): float
+    {
+        return $this->transactions()
+            ->whereIn('status', ['pending', 'on_hold'])
+            ->sum('amount');
     }
 }
