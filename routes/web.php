@@ -38,25 +38,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->parameters(['tracks' => 'song'])
         ->names('tracks');
 
-    // Доходы по треку (только для лейбла — проверка внутри SongController)
     Route::post('/tracks/{song}/earnings', [SongController::class, 'storeEarning'])
         ->name('tracks.earnings.store');
 
-    // Авторы трека
     Route::post('tracks/{song}/authors', [SongAuthorController::class, 'store'])->name('song-authors.store');
     Route::put('tracks/{song}/authors/{author}', [SongAuthorController::class, 'update'])->name('song-authors.update');
     Route::delete('tracks/{song}/authors/{author}', [SongAuthorController::class, 'destroy'])->name('song-authors.destroy');
 
-    // --- АРТИСТЫ ---
-    Route::resource('artists', ArtistController::class);
-
     // --- ПЛАТФОРМЫ ---
     Route::get('/platforms', [PlatformController::class, 'index'])->name('platforms.index');
+
+    // --- АРТИСТЫ (Label CRM) ---
+    Route::get('/label/artists', function () {
+        return Inertia::render('Artists/Index');
+    })->name('label.artists.index');
+
+    Route::get('/label/artists/{id}', function ($id) {
+        return Inertia::render('Artists/Show', [
+            'id' => (int) $id
+        ]);
+    })->whereNumber('id')->name('label.artists.show');
+    
+    
+    //оплата
+    Route::get('/label/payouts', function () {
+    return Inertia::render('Payouts/Index');
+    })->name('label.payouts');
+    
+    //Отчёты
+    Route::get('/label/reports', fn () => Inertia::render('Reports/Index'))->name('label.reports');
 
     // --- ПРОФИЛЬ ---
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Этот ресурс отдельно — он про API/админку, не трогаем
+    Route::resource('artists', ArtistController::class);
 });
 
 require __DIR__.'/auth.php';
