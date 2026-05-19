@@ -52,4 +52,11 @@ class Artist extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
+    public function balance(): float
+    {
+        return $this->transactions()
+            ->whereIn('status', ['pending', 'on_hold'])
+            ->sum('amount');
+    }
 }

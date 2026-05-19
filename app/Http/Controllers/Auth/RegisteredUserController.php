@@ -31,19 +31,19 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:label,artist'],
-        ]);
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'nickname' => 'required|string|max:255|unique:'.User::class, // добавь
+        'email' => 'required|string|email|max:255', // убрал unique:users
+        'password' => ['required', 'confirmed', Rules\Password::defaults()],
+    ]);
 
-        $user = User::query()->create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-        ]);
+    $user = User::create([
+        'name' => $request->name,
+        'nickname' => $request->nickname, // добавь
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
         event(new Registered($user));
 

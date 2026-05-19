@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Label|null $label
  * @property-read Artist|null $artist
  */
-#[Fillable(['name', 'email', 'password', 'role', 'label_id'])]
+#[Fillable(['name', 'nickname', 'email', 'password', 'role', 'label_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -51,5 +51,23 @@ class User extends Authenticatable
     public function artist(): HasOne
     {
         return $this->hasOne(Artist::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function balance(): float
+    {
+    // Сколько начислено, но ещё не выплачено
+    return $this->transactions()
+        ->whereIn('status', ['pending', 'on_hold'])
+        ->sum('amount');
+    }
+
+    public function totalEarned(): float
+    {
+        return $this->transactions()->sum('amount');
     }
 }

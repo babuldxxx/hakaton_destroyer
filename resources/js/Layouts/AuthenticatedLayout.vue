@@ -4,17 +4,34 @@ import { computed } from 'vue'
 
 const page = usePage()
 
-// Fallback для разработки без бэкенда
 const user = computed(() => page.props.auth?.user ?? {
     name: 'Мария Светлова',
     role: 'Артист'
 })
 
-const menuItems = [
-    { name: 'Дашборд', href: '/dashboard', icon: 'dashboard' },
-    { name: 'Мои треки', href: '/tracks', icon: 'tracks' },
-    { name: 'Финансы', href: '/finances', icon: 'finances' },
-]
+const isLabel = computed(() => {
+    const role = page.props.auth?.user?.role
+    if (!role) return false
+    return (typeof role === 'string' ? role : role?.value) === 'label'
+})
+
+const menuItems = computed(() => {
+    if (isLabel.value) {
+        return [
+            { name: 'Дашборд', href: '/dashboard', icon: 'dashboard' },
+            { name: 'Артисты', href: '/artists', icon: 'artists' },
+            { name: 'Треки', href: '/tracks', icon: 'tracks' },
+            { name: 'Выплаты', href: '/payouts', icon: 'finances' },
+            { name: 'Отчёты', href: '/reports', icon: 'reports' },
+        ]
+    }
+
+    return [
+        { name: 'Дашборд', href: '/dashboard', icon: 'dashboard' },
+        { name: 'Мои треки', href: '/tracks', icon: 'tracks' },
+        { name: 'Финансы', href: '/payouts', icon: 'finances' },
+    ]
+})
 
 function isCurrent(href) {
     return page.url === href || page.url.startsWith(href + '/')
@@ -23,7 +40,7 @@ function isCurrent(href) {
 
 <template>
     <div class="flex h-screen" style="background-color: #0B0E14; font-family: 'Inter', sans-serif; color: #F8FAFC;">
-<!---->
+
         <!-- SIDEBAR -->
         <aside
             class="flex h-screen w-[260px] flex-col border-r"
@@ -61,13 +78,22 @@ function isCurrent(href) {
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
                         </svg>
                     </template>
+
+                    <!-- Artists icon -->
+                    <template v-if="item.icon === 'artists'">
+                        <svg class="h-5 w-5 flex-shrink-0" :style="isCurrent(item.href) ? { color: '#7C3AED' } : { color: '#64748B' }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                        </svg>
+                    </template>
+
                     <!-- Tracks icon -->
                     <template v-if="item.icon === 'tracks'">
                         <svg class="h-5 w-5 flex-shrink-0" :style="isCurrent(item.href) ? { color: '#7C3AED' } : { color: '#64748B' }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
                         </svg>
                     </template>
-                    <!-- Finances icon -->
+
+                    <!-- Finances / Payouts icon -->
                     <template v-if="item.icon === 'finances'">
                         <svg
                             class="h-5 w-5 flex-shrink-0"
@@ -81,6 +107,13 @@ function isCurrent(href) {
                         >
                             <path d="M12 2v20" />
                             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </template>
+
+                    <!-- Reports icon -->
+                    <template v-if="item.icon === 'reports'">
+                        <svg class="h-5 w-5 flex-shrink-0" :style="isCurrent(item.href) ? { color: '#7C3AED' } : { color: '#64748B' }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                         </svg>
                     </template>
 
@@ -113,6 +146,36 @@ function isCurrent(href) {
 
         <!-- MAIN -->
         <main class="flex-1 overflow-y-auto">
+            <!-- Баннер приглашения в лейбл (только для артиста) -->
+            <div
+                v-if="$page.props.pendingInvitation"
+                class="mx-6 mt-6 flex items-center justify-between rounded-xl px-6 py-4"
+                style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);"
+            >
+                <div class="text-sm font-medium text-white">
+                    Вас пригласил лейбл
+                    <strong>{{ $page.props.pendingInvitation.label?.name ?? '—' }}</strong>
+                </div>
+                <div class="flex items-center gap-3">
+                    <Link
+                        :href="route('invitations.show', $page.props.pendingInvitation.token)"
+                        class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                        style="background-color: rgba(255,255,255,0.2);"
+                    >
+                        Подробнее
+                    </Link>
+                    <Link
+                        :href="route('artists.invitations.accept', $page.props.pendingInvitation.token)"
+                        method="post"
+                        as="button"
+                        class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-90"
+                        style="color: #7C3AED;"
+                    >
+                        Принять
+                    </Link>
+                </div>
+            </div>
+
             <slot />
         </main>
     </div>
