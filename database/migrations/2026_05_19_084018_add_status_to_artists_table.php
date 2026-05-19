@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('platforms', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true)->after('icon');
+        Schema::table('artists', function (Blueprint $table) {
+            $table->string('status')->default('pending')->after('label_id');
+            // или boolean: 'approved' -> default false
         });
     }
 
@@ -21,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('platforms', function (Blueprint $table) {
+        Schema::table('artists', function (Blueprint $table) {
             //
         });
     }

@@ -34,9 +34,10 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        if($user->role === 'label'){
+        if ($user->hasRole('label')) {
             return redirect()->intended(route('label.dashboard', absolute: false));
         }
+
         return redirect()->intended(route('artist.dashboard', absolute: false));
     }
 

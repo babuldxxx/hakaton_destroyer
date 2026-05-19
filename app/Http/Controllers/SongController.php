@@ -17,9 +17,9 @@ class SongController extends Controller
 {
     private function ensureLabel(): void
     {
-        $role = auth()->user()->role;
-        if ($role instanceof \BackedEnum) $role = $role->value;
-        if ($role !== 'label') abort(403, 'Только для лейбла.');
+        if (!auth()->user()->hasRole('label')) {
+            abort(403, 'Только для лейбла.');
+        }
     }
 
     public function index()

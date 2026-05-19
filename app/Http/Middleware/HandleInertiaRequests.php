@@ -16,40 +16,30 @@ class HandleInertiaRequests extends Middleware
 
     public function share(Request $request): array
     {
-        return array_merge(parent::share($request), [
+        return [
+            ...parent::share($request),
             'auth' => [
                 'user' => $request->user() ? [
                     'id'    => $request->user()->id,
                     'name'  => $request->user()->name,
                     'email' => $request->user()->email,
-                    'role'  => $request->user()->role instanceof \BackedEnum
-                        ? $request->user()->role->value
-                        : $request->user()->role,
+                    'roles' => $request->user()->getRoleNames()->toArray(),
                 ] : null,
             ],
             'pendingInvitation' => function () use ($request) {
                 $user = $request->user();
-
-                if (! $user) {
+                if (!$user || !$user->hasRole('artist')) {
                     return null;
                 }
+                $artist = $user->artist;
+                if (!$artist) return null;
 
-                $role = is_string($user->role) ? $user->role : ($user->role->value ?? null);
-
-                if ($role !== 'artist') {
-                    return null;
-                }
-
-                return \App\Models\ArtistInvitation::where('email', strtolower($user->email))
+                return \App\Models\Invitation::where('artist_id', $artist->id)
                     ->where('status', 'pending')
-                    ->where(function ($query) {
-                        $query->whereNull('expires_at')
-                              ->orWhere('expires_at', '>', now());
-                    })
                     ->with('label:id,name')
                     ->latest()
                     ->first();
             },
-        ]);
+        ];
     }
 }

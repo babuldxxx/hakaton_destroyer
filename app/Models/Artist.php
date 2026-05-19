@@ -8,20 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- *
- * @property int $id
- * @property int $user_id
- * @property int|null $label_id
- * @property string $stage_name
- * @property string|null $real_name
- * @property string|null $bio
- */
 class Artist extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'label_id', 'stage_name', 'real_name', 'bio'];
+    protected $fillable = ['user_id', 'label_id', 'stage_name', 'real_name', 'bio', 'status'];
 
     public function user(): BelongsTo
     {
@@ -51,6 +42,11 @@ class Artist extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
     }
 
     public function balance(): float

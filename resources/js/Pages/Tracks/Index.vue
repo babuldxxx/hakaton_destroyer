@@ -125,21 +125,29 @@ const deleteTrack = (id) => {
       </div>
 
       <!-- Pagination -->
-      <div v-if="tracks?.links" class="mt-8 flex justify-center">
-        <div class="flex gap-2">
-          <Link
-            v-for="(link, i) in tracks.links"
-            :key="i"
-            :href="link.url"
-            v-html="link.label"
-            class="px-3 py-1 rounded text-sm transition"
-            :class="link.active
-              ? 'bg-indigo-600 text-white'
-              : 'bg-[#1A1F2B] text-gray-400 hover:text-white'"
-            style="border: 1px solid #2D3748;"
-          />
+        <div v-if="tracks?.links && tracks.links.length > 3" class="mt-8 flex justify-center">
+            <div class="flex gap-2">
+                <template v-for="(link, i) in tracks.links" :key="i">
+                    <Link
+                        v-if="link.url"
+                        :href="link.url"
+                        v-html="link.label"
+                        class="px-3 py-1 rounded text-sm transition"
+                        :class="link.active
+          ? 'bg-indigo-600 text-white'
+          : 'bg-[#1A1F2B] text-gray-400 hover:text-white'"
+                        style="border: 1px solid #2D3748;"
+                        preserve-scroll
+                    />
+                    <span
+                        v-else
+                        v-html="link.label"
+                        class="px-3 py-1 rounded text-sm text-gray-600 cursor-default"
+                        style="border: 1px solid #2D3748;"
+                    />
+                </template>
+            </div>
         </div>
-      </div>
     </div>
   </AuthenticatedLayout>
 </template>
