@@ -4,10 +4,10 @@ import { Head, useForm } from '@inertiajs/vue3'
 import { Link } from '@inertiajs/vue3'
 import GuestLayout from '@/Layouts/GuestLayout.vue'
 
-const mode = ref('login')   // 'login' | 'forgot'
+const mode = ref('login')
 
 const loginForm = useForm({
-    email: '',
+    nickname: '',
     password: '',
     remember: false,
 })
@@ -27,7 +27,7 @@ function submitForgot() {
 }
 </script>
 
-<template>
+<<template>
     <GuestLayout>
         <Head title="Вход" />
 
@@ -35,7 +35,6 @@ function submitForgot() {
             class="w-full max-w-[420px] rounded-[20px] border p-8 md:p-10"
             style="background-color: #1A1F2B; border-color: #2D3748; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);"
         >
-            <!-- Логотип -->
             <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl" style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
                 <svg class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -60,18 +59,18 @@ function submitForgot() {
                     leave-to-class="transform -translate-y-3 opacity-0"
                 >
 
-                    <!-- LOGIN -->
                     <form v-if="mode === 'login'" key="login" @submit.prevent="submitLogin" class="space-y-4">
                         <div>
                             <input
-                                v-model="loginForm.email"
-                                type="email"
+                                v-model="loginForm.nickname"
+                                type="text"
                                 required
-                                placeholder="Email"
+                                autofocus
+                                placeholder="Никнейм"
                                 class="w-full rounded-xl border px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
                                 style="background-color: #0B0E14; border-color: #2D3748;"
                             />
-                            <p v-if="loginForm.errors.email" class="mt-1 text-xs text-red-400">{{ loginForm.errors.email }}</p>
+                            <p v-if="loginForm.errors.nickname" class="mt-1 text-xs text-red-400">{{ loginForm.errors.nickname }}</p>
                         </div>
 
                         <div>
@@ -107,18 +106,17 @@ function submitForgot() {
                             </button>
                         </div>
 
-                        <div class="pt-2 text-center"> 
-                            <Link :href="route('register')" 
-                            class="text-sm transition-colors 
-                            hover:text-violet-300" 
-                            style="color: #7C3AED;"
-                            > 
+                        <div class="pt-2 text-center">
+                            <Link
+                                :href="route('register')"
+                                class="text-sm transition-colors hover:text-violet-300"
+                                style="color: #7C3AED;"
+                            >
                                 Нет аккаунта? Зарегистрируйтесь!
-                            </Link> 
+                            </Link>
                         </div>
                     </form>
 
-                    <!-- FORGOT PASSWORD -->
                     <form v-else key="forgot" @submit.prevent="submitForgot" class="space-y-4">
                         <h2 class="text-lg font-semibold text-white">Восстановление пароля</h2>
                         <p class="text-sm" style="color: #94A3B8;">

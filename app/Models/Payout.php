@@ -2,25 +2,31 @@
 
 namespace App\Models;
 
-use App\Enums\PayoutStatus;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payout extends Model
 {
-    use HasFactory;
-
-    protected $fillable = ['artist_id', 'amount', 'method', 'status', 'paid_at'];
+    protected $fillable = [
+        'artist_id', 'amount', 'currency', 'status',
+        'paid_at', 'method', 'details', 'created_by',
+    ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
-        'status' => PayoutStatus::class,
         'paid_at' => 'datetime',
     ];
 
-    public function artist(): BelongsTo
+    public function artist()
     {
         return $this->belongsTo(Artist::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

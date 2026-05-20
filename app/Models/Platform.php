@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany; // ДОБАВИЛИ ИМПОРТ
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Platform extends Model
 {
@@ -23,7 +23,6 @@ class Platform extends Model
         return $this->hasMany(Transaction::class);
     }
 
-    // ДОБАВИЛИ ОБРАТНУЮ СВЯЗЬ С ТРЕКАМИ
     public function songs(): BelongsToMany
     {
         return $this->belongsToMany(Song::class, 'song_platform');

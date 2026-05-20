@@ -3,52 +3,44 @@
 namespace App\Policies;
 
 use App\Models\Artist;
+use App\Models\Invitation;
 use App\Models\User;
 
 class ArtistPolicy
 {
-    private function role(User $user): string
-    {
-        $role = $user->role;
-        return $role instanceof \BackedEnum ? (string) $role->value : $role->name;
-    }
-
-    /**
-     * Может ли пользователь просматривать список артистов.
-     */
     public function viewAny(User $user): bool
     {
-        $role = $this->role($user);
-        return in_array($role, ['label', 'artist']);
+        return $user->hasRole('label') || $user->hasRole('artist');
     }
 
     public function view(User $user, Artist $artist): bool
     {
-        $role = $this->role($user);
-
-        if ($role === 'label') {
+        if ($user->hasRole('label')) {
             return $artist->label_id === $user->label_id;
         }
-
-        if ($role === 'artist') {
+        if ($user->hasRole('artist')) {
             return $artist->user_id === $user->id;
         }
-
         return false;
-    }
-
-    public function create(User $user): bool
-    {
-        return $this->role($user) === 'label';
     }
 
     public function update(User $user, Artist $artist): bool
     {
-        return $this->view($user, $artist) && $this->role($user) === 'label';
+        return $user->hasRole('label') && $artist->label_id === $user->label_id;
     }
 
     public function delete(User $user, Artist $artist): bool
     {
-        return $this->update($user, $artist);
+        return $user->hasRole('label') && $artist->label_id === $user->label_id;
+    }
+
+    public function invite(User $user, Artist $artist): bool
+    {
+        return $user->hasRole('label') && is_null($artist->label_id);
+    }
+
+    public function respondToInvitation(User $user, Invitation $invitation): bool
+    {
+        return $user->hasRole('artist') && $user->artist?->id === $invitation->artist_id;
     }
 }

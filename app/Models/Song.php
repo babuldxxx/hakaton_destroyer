@@ -62,7 +62,7 @@ class Song extends Model
         return $this->belongsTo(Genre::class);
     }
 
-    public function songAuthors(): HasMany
+    public function songAuthors()
     {
         return $this->hasMany(SongAuthor::class);
     }

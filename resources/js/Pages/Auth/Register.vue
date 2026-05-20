@@ -3,10 +3,11 @@ import { ref } from 'vue'
 import GuestLayout from '@/Layouts/GuestLayout.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 
-const role = ref('label') // 'label' | 'artist'
+const role = ref('label')
 
 const form = useForm({
     name: '',
+    nickname: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -15,13 +16,14 @@ const form = useForm({
 
 const submit = () => {
     form.role = role.value
+    form.name = form.nickname || 'Пользователь'  // подставляем ник вместо имени
     form.post(route('register'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
     })
 }
 </script>
 
-<template>
+<<template>
     <GuestLayout>
         <Head title="Регистрация" />
 
@@ -73,18 +75,20 @@ const submit = () => {
             </div>
 
             <form @submit.prevent="submit" class="mt-6 space-y-4">
+                <!-- Никнейм -->
                 <div>
                     <input
-                        v-model="form.name"
+                        v-model="form.nickname"
                         type="text"
                         required
-                        placeholder="Имя"
+                        placeholder="Никнейм / Логин"
                         class="w-full rounded-xl border px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
                         style="background-color: #0B0E14; border-color: #2D3748;"
                     />
-                    <p v-if="form.errors.name" class="mt-1 text-xs text-red-400">{{ form.errors.name }}</p>
+                    <p v-if="form.errors.nickname" class="mt-1 text-xs text-red-400">{{ form.errors.nickname }}</p>
                 </div>
 
+                <!-- Email -->
                 <div>
                     <input
                         v-model="form.email"
@@ -97,6 +101,7 @@ const submit = () => {
                     <p v-if="form.errors.email" class="mt-1 text-xs text-red-400">{{ form.errors.email }}</p>
                 </div>
 
+                <!-- Пароль -->
                 <div>
                     <input
                         v-model="form.password"
@@ -109,6 +114,7 @@ const submit = () => {
                     <p v-if="form.errors.password" class="mt-1 text-xs text-red-400">{{ form.errors.password }}</p>
                 </div>
 
+                <!-- Подтверждение пароля -->
                 <div>
                     <input
                         v-model="form.password_confirmation"

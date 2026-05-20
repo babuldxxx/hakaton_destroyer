@@ -1,162 +1,243 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { Head } from '@inertiajs/vue3'
-import LabelLayout from '@/Layouts/LabelLayout.vue'
+import { Head, useForm, usePage, router } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
-/* ─── Фильтр ─── */
+const props = defineProps({
+    artists: Array,
+    payouts: Object,
+    stats: Object,
+    transactions: Object,
+})
+
+const page = usePage()
+
+const isLabel = computed(() => {
+    const roles = page.props.auth?.user?.roles ?? []
+    return roles.includes('label')
+})
+
 const activeFilter = ref('all')
 const filters = [
-  { key: 'all', label: 'Все' },
-  { key: 'pending', label: 'В ожидании' },
-  { key: 'completed', label: 'Завершено' },
+    { key: 'all', label: 'Все' },
+    { key: 'pending', label: 'В ожидании' },
+    { key: 'paid', label: 'Завершено' },
 ]
 
-/* ─── Демо-данные (как на скриншоте) ─── */
-const payouts = [
-  { id: 1, date: '2025-11-15', artist: 'Тёмный Бит', comment: 'Выплата за октябрь 2025', amount: 250000, status: 'completed' },
-  { id: 2, date: '2025-11-15', artist: 'Мария Светлова', comment: 'Выплата за октябрь 2025', amount: 180000, status: 'completed' },
-  { id: 3, date: '2025-12-01', artist: 'Эхо Ночи', comment: 'Ожидает обработки', amount: 220000, status: 'pending' },
-  { id: 4, date: '2025-12-01', artist: 'Рок Волна', comment: 'Ожидает обработки', amount: 145000, status: 'pending' },
-]
-
-const filtered = computed(() => {
-  if (activeFilter.value === 'all') return payouts
-  return payouts.filter(p => p.status === activeFilter.value)
+const form = useForm({
+    artist_id: null,
+    method: 'bank',
+    details: '',
 })
 
-/* ─── Статистика ─── */
-const stats = computed(() => {
-  const pending = payouts.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0)
-  const completed = payouts.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
-  return { pending, completed, total: payouts.length }
-})
+function createPayout(artist) {
+    form.artist_id = artist.id
+    form.post(route('payouts.store'), {
+        preserveScroll: true,
+        onSuccess: () => form.reset(),
+    })
+}
 
-const fmt = (n) => n.toLocaleString('ru-RU') + ' ₽'
+function confirmPaid(payout) {
+    if (!confirm('Подтвердить выплату ' + Number(payout.amount).toLocaleString('ru-RU') + ' ₽?')) return
+    router.patch(route('payouts.pay', payout.id), {}, { preserveScroll: true })
+}
+
+const fmt = (n) => Number(n).toLocaleString('ru-RU') + ' ₽'
 </script>
 
 <template>
-  <Head title="Выплаты" />
-  <LabelLayout>
-    <div class="p-6 md:p-10">
-      <div class="mx-auto max-w-5xl">
+    <Head title="Выплаты" />
+    <AuthenticatedLayout>
+        <div class="min-h-screen p-8" style="background-color: #0B0E14; color: #F8FAFC;">
 
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <h1 class="text-3xl md:text-4xl font-bold text-white">Выплаты</h1>
-          <button
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition shadow-lg shadow-violet-900/20 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
-            style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Инициировать выплату
-          </button>
-        </div>
-
-        <!-- Stats cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
-          <!-- Ожидают -->
-          <div class="bg-[#1A1F2B] rounded-2xl p-6 border border-white/5">
-            <div class="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="text-sm text-slate-400 mb-1">Ожидают выплаты</div>
-            <div class="text-2xl font-bold text-white">{{ fmt(stats.pending) }}</div>
-          </div>
-          <!-- Выплачено -->
-          <div class="bg-[#1A1F2B] rounded-2xl p-6 border border-white/5">
-            <div class="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="text-sm text-slate-400 mb-1">Выплачено</div>
-            <div class="text-2xl font-bold text-white">{{ fmt(stats.completed) }}</div>
-          </div>
-          <!-- Всего -->
-          <div class="bg-[#1A1F2B] rounded-2xl p-6 border border-white/5">
-            <div class="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center mb-4">
-              <svg class="w-6 h-6 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div class="text-sm text-slate-400 mb-1">Всего транзакций</div>
-            <div class="text-2xl font-bold text-white">{{ stats.total }}</div>
-          </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="flex flex-wrap gap-2 mb-6">
-          <button
-            v-for="f in filters"
-            :key="f.key"
-            @click="activeFilter = f.key"
-            class="px-5 py-2 rounded-full text-sm font-medium border transition select-none"
-            :class="activeFilter === f.key
-              ? 'text-white border-transparent'
-              : 'bg-[#1A1F2B] text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'"
-            :style="activeFilter === f.key ? { background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' } : {}"
-          >
-            {{ f.label }}
-          </button>
-        </div>
-
-        <!-- Table -->
-        <div class="bg-[#1A1F2B] rounded-2xl border border-white/5">
-          <div class="p-6 border-b border-white/5">
-            <h2 class="text-lg font-semibold text-white">История выплат</h2>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-white/5 text-slate-400 text-sm">
-                  <th class="py-4 px-6 font-medium whitespace-nowrap">Дата</th>
-                  <th class="py-4 px-6 font-medium whitespace-nowrap">Артист</th>
-                  <th class="py-4 px-6 font-medium whitespace-nowrap">Комментарий</th>
-                  <th class="py-4 px-6 font-medium whitespace-nowrap text-right">Сумма</th>
-                  <th class="py-4 px-6 font-medium whitespace-nowrap text-right">Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="p in filtered"
-                  :key="p.id"
-                  class="border-b border-white/5 last:border-0 transition-colors hover:bg-white/[0.03]"
-                >
-                  <td class="py-4 px-6 text-sm text-slate-300 whitespace-nowrap">{{ p.date }}</td>
-                  <td class="py-4 px-6 text-sm text-white whitespace-nowrap">{{ p.artist }}</td>
-                  <td class="py-4 px-6 text-sm text-slate-400 whitespace-nowrap">{{ p.comment }}</td>
-                  <td class="py-4 px-6 text-sm font-bold text-white whitespace-nowrap text-right">{{ fmt(p.amount) }}</td>
-                  <td class="py-4 px-6 text-right whitespace-nowrap">
-                    <span
-                      v-if="p.status === 'completed'"
-                      class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400"
+            <!-- ЛЕЙБЛ -->
+            <template v-if="isLabel">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <h1 class="text-3xl md:text-4xl font-bold text-white">Выплаты артистам</h1>
+                    <button
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition shadow-lg shadow-violet-900/20 hover:opacity-90"
+                        style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)"
                     >
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Выплачено
-                    </span>
-                    <span
-                      v-else
-                      class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400"
-                    >
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      В ожидании
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Инициировать выплату
+                    </button>
+                </div>
 
-      </div>
-    </div>
-  </LabelLayout>
+                <!-- Карточки доступных средств -->
+                <div class="mb-10 space-y-3">
+                    <h2 class="mb-2 text-sm font-semibold uppercase tracking-wider" style="color: #64748B;">
+                        Доступно для выплаты
+                    </h2>
+                    <div v-if="!artists || artists.length === 0"
+                        class="rounded-xl p-6 text-sm"
+                        style="background-color: #1A1F2B; border: 1px solid #1e2330; color: #64748B;">
+                        Нет начислений в статусе «Ожидает».
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div
+                            v-for="artist in artists"
+                            :key="artist.id"
+                            class="flex items-center justify-between rounded-xl px-6 py-4"
+                            style="background-color: #1A1F2B; border: 1px solid #1e2330;">
+                            <div>
+                                <p class="text-lg font-semibold text-white">{{ artist.artist_name }}</p>
+                                <p class="text-xs" style="color: #64748B;">{{ artist.pending_count }} начислений</p>
+                            </div>
+                            <div class="flex items-center gap-6">
+                                <div class="text-right">
+                                    <p class="text-2xl font-bold text-white">{{ fmt(artist.pending_amount) }}</p>
+                                    <p class="text-[11px]" style="color: #64748B;">доступно</p>
+                                </div>
+                                <button
+                                    @click="createPayout(artist)"
+                                    :disabled="form.processing && form.artist_id === artist.id"
+                                    class="rounded-lg px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                                    style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+                                    Сформировать выплату
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Фильтры -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button
+                        v-for="f in filters"
+                        :key="f.key"
+                        @click="activeFilter = f.key"
+                        class="px-5 py-2 rounded-full text-sm font-medium border transition"
+                        :class="activeFilter === f.key ? 'text-white border-transparent' : 'bg-[#1A1F2B] text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'"
+                        :style="activeFilter === f.key ? { background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' } : {}"
+                    >
+                        {{ f.label }}
+                    </button>
+                </div>
+
+                <!-- История выплат -->
+                <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider" style="color: #64748B;">История выплат</h2>
+                <div class="rounded-xl overflow-hidden border border-white/5" style="background-color: #1A1F2B;">
+                    <table class="w-full text-left text-sm">
+                        <thead style="background-color: #0F1117;">
+                            <tr class="text-slate-400">
+                                <th class="px-6 py-3 font-medium whitespace-nowrap">Дата</th>
+                                <th class="px-6 py-3 font-medium whitespace-nowrap">Артист</th>
+                                <th class="px-6 py-3 font-medium whitespace-nowrap text-right">Сумма</th>
+                                <th class="px-6 py-3 font-medium whitespace-nowrap text-right">Статус</th>
+                                <th class="px-6 py-3 font-medium whitespace-nowrap"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="p in payouts.data" :key="p.id"
+                                class="border-t border-white/5 transition-colors hover:bg-white/[0.03]">
+                                <td class="px-6 py-4 text-white whitespace-nowrap">
+                                    {{ new Date(p.created_at).toLocaleDateString('ru-RU') }}
+                                </td>
+                                <td class="px-6 py-4 text-white">{{ p.artist?.user?.name ?? '-' }}</td>
+                                <td class="px-6 py-4 font-semibold text-white whitespace-nowrap text-right">{{ fmt(p.amount) }}</td>
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                    <span v-if="p.status === 'pending'"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">
+                                        В ожидании
+                                    </span>
+                                    <span v-else
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                                        Выплачено
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button v-if="p.status === 'pending'" @click="confirmPaid(p)"
+                                        class="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                                        style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+                                        Подтвердить перевод
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-if="!payouts.data.length" class="px-6 py-8 text-center text-sm" style="color: #64748B;">
+                        Пока нет выплат.
+                    </div>
+                </div>
+            </template>
+
+            <!-- АРТИСТ -->
+            <template v-else>
+                <h1 class="mb-8 text-3xl font-bold">Финансы</h1>
+
+                <!-- Статистика -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+                    <div class="bg-[#1A1F2B] rounded-2xl p-6 border border-white/5">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="text-sm text-slate-400 mb-1">Текущий баланс</div>
+                        <div class="text-2xl font-bold text-white">{{ fmt(stats?.balance ?? 0) }}</div>
+                    </div>
+                    <div class="bg-[#1A1F2B] rounded-2xl p-6 border border-white/5">
+                        <div class="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                            </svg>
+                        </div>
+                        <div class="text-sm text-slate-400 mb-1">Общий доход</div>
+                        <div class="text-2xl font-bold text-white">{{ fmt(stats?.total_earned ?? 0) }}</div>
+                    </div>
+                    <div class="bg-[#1A1F2B] rounded-2xl p-6 border border-white/5">
+                        <div class="w-12 h-12 rounded-xl bg-orange-500/15 flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                            </svg>
+                        </div>
+                        <div class="text-sm text-slate-400 mb-1">Выплачено</div>
+                        <div class="text-2xl font-bold text-white">{{ fmt(stats?.total_paid ?? 0) }}</div>
+                    </div>
+                </div>
+
+                <!-- История операций -->
+                <h2 class="mb-4 text-xl font-semibold">История начислений и выплат</h2>
+                <div class="rounded-xl overflow-hidden border border-white/5" style="background-color: #1A1F2B;">
+                    <table class="w-full text-left text-sm">
+                        <thead style="background-color: #0F1117;">
+                            <tr class="text-slate-400">
+                                <th class="px-6 py-3 font-medium">Дата</th>
+                                <th class="px-6 py-3 font-medium">Описание</th>
+                                <th class="px-6 py-3 font-medium text-right">Сумма</th>
+                                <th class="px-6 py-3 font-medium text-right">Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="tx in transactions.data" :key="tx.id"
+                                class="border-t border-white/5 transition-colors hover:bg-white/[0.03]">
+                                <td class="px-6 py-4 text-white whitespace-nowrap">
+                                    {{ new Date(tx.created_at).toLocaleDateString('ru-RU') }}
+                                </td>
+                                <td class="px-6 py-4 text-white">{{ tx.earning?.song?.title ?? 'Начисление роялти' }}</td>
+                                <td class="px-6 py-4 font-semibold whitespace-nowrap text-right"
+                                    :class="tx.amount > 0 ? 'text-green-400' : 'text-red-400'">
+                                    {{ (tx.amount > 0 ? '+' : '') + Number(tx.amount).toLocaleString('ru-RU') }} ₽
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <span v-if="tx.status === 'pending'"
+                                        class="rounded-full bg-yellow-500/10 px-2.5 py-1 text-xs font-medium text-yellow-500">Ожидает</span>
+                                    <span v-else-if="tx.status === 'on_hold'"
+                                        class="rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-500">В выплате</span>
+                                    <span v-else
+                                        class="rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-500">Выплачено</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-if="!transactions?.data?.length" class="px-6 py-8 text-center text-sm" style="color: #64748B;">
+                        Пока нет операций.
+                    </div>
+                </div>
+            </template>
+        </div>
+    </AuthenticatedLayout>
 </template>
