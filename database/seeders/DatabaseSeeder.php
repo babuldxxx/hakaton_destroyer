@@ -5,9 +5,9 @@ namespace Database\Seeders;
 use App\Enums\PayoutStatus;
 use App\Enums\RightsType;
 use App\Enums\SongAuthorRole;
-use App\Enums\TransactionType;
 use App\Models\Artist;
 use App\Models\CustomOrder;
+use App\Models\Earning;
 use App\Models\Genre;
 use App\Models\Invitation;
 use App\Models\Label;
@@ -15,9 +15,9 @@ use App\Models\Payout;
 use App\Models\Platform;
 use App\Models\Song;
 use App\Models\SongAuthor;
-use App\Models\SongPlatformEarning;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\RoyaltyCalculator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -115,12 +115,12 @@ class DatabaseSeeder extends Seeder
                 'stage_name' => "FreeStar {$i}",
                 'real_name'  => $user->name,
                 'status'     => 'pending',
+                'label_id'   => null,
             ]);
             $pendingArtists[] = $artist;
         }
 
         // ---------- ПРИГЛАШЕНИЯ ----------
-        // Лейбл 1 приглашает первого свободного артиста
         if (isset($pendingArtists[0])) {
             Invitation::create([
                 'label_id'  => $label1->id,
@@ -128,7 +128,6 @@ class DatabaseSeeder extends Seeder
                 'status'    => 'pending',
             ]);
         }
-        // Лейбл 2 приглашает второго свободного артиста
         if (isset($pendingArtists[1])) {
             Invitation::create([
                 'label_id'  => $label2->id,
@@ -140,7 +139,6 @@ class DatabaseSeeder extends Seeder
         // ---------- ПЕСНИ ----------
         $allArtists = array_merge($artistsLabel1, $artistsLabel2);
         $platforms = Platform::all();
-
         $songTitles = [
             'Midnight Dreams', 'Electric Heart', 'Summer Rain', 'Golden Lights',
             'Neon Nights', 'Lost in Tokyo', 'Ocean Drive', 'Crystal Tears',
@@ -166,6 +164,7 @@ class DatabaseSeeder extends Seeder
                 $platforms->random(rand(1, 4))->pluck('id')->toArray()
             );
 
+            // Авторы
             $authors = collect([$artist]);
             if (rand(0, 1) && count($allArtists) > 1) {
                 $second = $allArtists[array_rand($allArtists)];
@@ -173,7 +172,6 @@ class DatabaseSeeder extends Seeder
                     $authors->push($second);
                 }
             }
-
             $roles = [SongAuthorRole::Performer, SongAuthorRole::Composer, SongAuthorRole::Producer];
             $totalShare = 100;
             foreach ($authors as $i => $author) {
@@ -188,45 +186,30 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
 
+            // Доходы и распределение
+            $calculator = app(RoyaltyCalculator::class);
             foreach ($song->platforms as $platform) {
                 for ($m = 0; $m < 6; $m++) {
-                    $periodStart = now()->subMonths($m)->startOfMonth();
-                    $periodEnd = now()->subMonths($m)->endOfMonth();
-                    $earning = \App\Models\Earning::create([
-                        'song_id'     => $song->id,
-                        'platform_id' => $platform->id,
-                        'period'      => $periodStart->format('Y-m'),
-                        'gross_amount'=> rand(500, 5000) + (rand(0, 99) / 100),
-                        'currency'    => 'RUB',
-                        'created_by'  => $song->label_id ? User::where('label_id', $song->label_id)->first()->id : 1,
-                        'status'      => 'distributed',
+                    $period = now()->subMonths($m)->format('Y-m');
+                    $gross = rand(500, 5000) + (rand(0, 99) / 100);
+                    $earning = Earning::create([
+                        'song_id'             => $song->id,
+                        'platform_id'         => $platform->id,
+                        'period'              => $period,
+                        'gross_amount'        => $gross,
+                        'label_share_percent' => rand(0, 30),
+                        'created_by'          => $label ? $label->users()->first()?->id ?? 1 : 1,
+                        'status'              => 'pending',
                     ]);
+                    $calculator->distribute($earning);
                 }
             }
         }
 
-        // ---------- ТРАНЗАКЦИИ ----------
-        foreach ($allArtists as $artist) {
-            $artistSongs = Song::whereHas('songAuthors', fn($q) => $q->where('artist_id', $artist->id))->get();
-            foreach ($artistSongs as $song) {
-                $earnings = $song->earnings()->inRandomOrder()->take(2)->get();
-                foreach ($earnings as $earning) {
-                    Transaction::create([
-                        'earning_id'  => $earning->id,              // связь с earning
-                        'user_id'     => $artist->user_id,
-                        'artist_id'   => $artist->id,
-                        'amount'      => $earning->amount * 0.7,
-                        'type'        => 'author_rights',            // или TransactionType::PlatformEarning->value
-                        'status'      => 'pending',                  // новый столбец
-                        'period'      => $earning->period_start->format('Y-m'), // новый столбец
-                        'meta'        => json_encode([               // новый столбец
-                            'platform'    => $earning->platform->name,
-                            'description' => "Доход с {$earning->platform->name} за {$earning->period_start->format('Y-m')}",
-                        ]),
-                    ]);
-                }
-            }
+        // ---------- ТРАНЗАКЦИИ (уже созданы через distribute) ----------
 
+        // ---------- ВЫПЛАТЫ ----------
+        foreach ($allArtists as $artist) {
             if (rand(0, 1)) {
                 Payout::create([
                     'artist_id' => $artist->id,

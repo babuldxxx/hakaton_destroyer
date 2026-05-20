@@ -11,7 +11,7 @@ class ArtistDashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $artist = $user->artist; // отношение HasOne
+        $artist = $user->artist;
 
         if (!$artist || $artist->status !== 'approved') {
             // Есть ли активные приглашения?

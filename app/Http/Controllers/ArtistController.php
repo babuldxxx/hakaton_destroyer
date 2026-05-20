@@ -113,8 +113,11 @@ class ArtistController extends Controller
     public function destroy(Artist $artist)
     {
         $this->authorize('delete', $artist);
+
         $artist->update(['label_id' => null, 'status' => 'pending']);
-        Invitation::where('artist_id', $artist->id)->where('status', 'pending')->delete();
+
+        Invitation::where('artist_id', $artist->id)->delete();
+
         return back()->with('success', 'Артист отвязан от лейбла.');
     }
 

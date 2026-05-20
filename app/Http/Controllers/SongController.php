@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Artist;
 use App\Models\Earning;
 use App\Models\Genre;
+use App\Models\Label;
 use App\Models\Platform;
 use App\Models\Song;
 use App\Models\Transaction;
@@ -22,26 +23,50 @@ class SongController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $songs = Song::with(['artists', 'genre', 'label', 'songAuthors.artist', 'platforms'])
-            ->latest()
-            ->paginate(20)
+        $user = auth()->user();
+        $query = Song::with(['artists', 'genre', 'label', 'songAuthors.artist', 'platforms']);
+
+        if ($user->hasRole('label')) {
+            $label = Label::find($user->label_id);
+            if ($label) {
+                $query->where('songs.label_id', $label->id);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($user->hasRole('artist')) {
+            $artist = $user->artist;
+            if ($artist) {
+                $query->whereHas('songAuthors', fn ($q) => $q->where('artist_id', $artist->id));
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        if ($search = $request->input('search')) {
+            $query->where('title', 'like', "%{$search}%");
+        }
+
+        $songs = $query->latest()->paginate(20)
+            ->appends($request->only('search'))
             ->through(fn (Song $song) => [
                 'id'           => $song->id,
                 'title'        => $song->title,
-                'status'       => $song->status,
                 'release_date' => $song->released_at?->toDateString(),
                 'genre'        => $song->genre,
                 'label'        => $song->label,
                 'artists'      => $song->artists,
-                'cover_url'    => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : '/images/default-cover.jpg',
+                'cover_url'    => $song->cover_path ? Storage::disk('public')->url($song->cover_path) : null,
                 'mp3_url'      => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
                 'song_authors' => $song->songAuthors,
                 'platforms'    => $song->platforms->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'slug' => $p->slug]),
             ]);
 
-        return Inertia::render('Tracks/Index', ['tracks' => $songs]);
+        return Inertia::render('Tracks/Index', [
+            'tracks' => $songs,
+            'filters' => $request->only('search'),
+        ]);
     }
 
     public function create()
