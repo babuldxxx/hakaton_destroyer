@@ -103,7 +103,7 @@ function isCurrent(href) {
             </nav>
 
             <!-- User block bottom -->
-            <div class="p-4 mx-4 mb-4">
+            <Link :href="route('profile.edit')" class="p-4 mx-4 mb-4 block">
                 <div class="flex items-center gap-3 pt-4 border-t border-white/10">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
                         {{ user.name.charAt(0) }}
@@ -113,7 +113,7 @@ function isCurrent(href) {
                         <p class="text-xs text-slate-500">{{ isLabel ? 'Лейбл' : 'Артист' }}</p>
                     </div>
                 </div>
-            </div>
+            </Link>
         </aside>
 
         <!-- Main content -->

@@ -5,6 +5,7 @@ use App\Http\Controllers\ArtistDashboardController;
 use App\Http\Controllers\LabelDashboardController;
 use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SongController;
 use App\Http\Controllers\SongAuthorController;
 use App\Http\Controllers\PlatformController;
@@ -13,7 +14,7 @@ use Inertia\Inertia;
 
 Route::get('/', fn () => redirect()->route('login'));
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
         if ($user->hasRole('artist')) {
@@ -58,9 +59,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/payouts', [PayoutController::class, 'index'])->name('payouts.index');
     Route::post('/payouts', [PayoutController::class, 'store'])->name('payouts.store');
-    Route::patch('/payouts/{payout}/pay', [PayoutController::class, 'pay'])->name('payouts.pay');
+    Route::patch('/payouts/{payout}/pay', [PayoutController::class, 'markPaid'])->name('payouts.pay');
 
-    Route::get('/reports', fn () => Inertia::render('Reports/Index'))->name('reports');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports');
 });
 
 require __DIR__.'/auth.php';

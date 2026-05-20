@@ -21,8 +21,20 @@ const activeFilter = ref('all')
 const filters = [
     { key: 'all', label: 'Все' },
     { key: 'pending', label: 'В ожидании' },
-    { key: 'paid', label: 'Завершено' },
+    { key: 'completed', label: 'Завершено' },
 ]
+
+const filteredPayouts = computed(() => {
+    if (!props.payouts?.data) return []
+    if (activeFilter.value === 'all') return props.payouts.data
+    return props.payouts.data.filter(p => p.status === activeFilter.value)
+})
+
+const filteredTransactions = computed(() => {
+    if (!props.transactions?.data) return []
+    if (activeFilter.value === 'all') return props.transactions.data
+    return props.transactions.data.filter(tx => tx.status === activeFilter.value)
+})
 
 const form = useForm({
     artist_id: null,
@@ -55,15 +67,15 @@ const fmt = (n) => Number(n).toLocaleString('ru-RU') + ' ₽'
             <template v-if="isLabel">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                     <h1 class="text-3xl md:text-4xl font-bold text-white">Выплаты артистам</h1>
-                    <button
-                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition shadow-lg shadow-violet-900/20 hover:opacity-90"
-                        style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)"
-                    >
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Инициировать выплату
-                    </button>
+<!--                    <button-->
+<!--                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition shadow-lg shadow-violet-900/20 hover:opacity-90"-->
+<!--                        style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)"-->
+<!--                    >-->
+<!--                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">-->
+<!--                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />-->
+<!--                        </svg>-->
+<!--                        Инициировать выплату-->
+<!--                    </button>-->
                 </div>
 
                 <!-- Карточки доступных средств -->
@@ -131,7 +143,7 @@ const fmt = (n) => Number(n).toLocaleString('ru-RU') + ' ₽'
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="p in payouts.data" :key="p.id"
+                            <tr v-for="p in filteredPayouts" :key="p.id"
                                 class="border-t border-white/5 transition-colors hover:bg-white/[0.03]">
                                 <td class="px-6 py-4 text-white whitespace-nowrap">
                                     {{ new Date(p.created_at).toLocaleDateString('ru-RU') }}
@@ -212,7 +224,7 @@ const fmt = (n) => Number(n).toLocaleString('ru-RU') + ' ₽'
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="tx in transactions.data" :key="tx.id"
+                            <tr v-for="tx in filteredTransactions" :key="tx.id"
                                 class="border-t border-white/5 transition-colors hover:bg-white/[0.03]">
                                 <td class="px-6 py-4 text-white whitespace-nowrap">
                                     {{ new Date(tx.created_at).toLocaleDateString('ru-RU') }}

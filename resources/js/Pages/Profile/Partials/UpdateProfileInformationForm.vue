@@ -1,17 +1,10 @@
 <script setup>
 import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 
 defineProps({
-    mustVerifyEmail: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
+    mustVerifyEmail: Boolean,
+    status: String,
 });
 
 const user = usePage().props.auth.user;
@@ -24,74 +17,68 @@ const form = useForm({
 
 <template>
     <section>
-        <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Profile Information
-            </h2>
-
-            <p class="mt-1 text-sm text-gray-600">
-                Update your account's profile information and email address.
-            </p>
+        <header class="mb-6">
+            <h2 class="text-lg font-semibold text-white">Информация профиля</h2>
+            <p class="mt-1 text-sm text-slate-400">Обновите имя и email вашего аккаунта.</p>
         </header>
 
-        <form
-            @submit.prevent="form.patch(route('profile.update'))"
-            class="mt-6 space-y-6"
-        >
+        <form @submit.prevent="form.patch(route('profile.update'))" class="space-y-5">
             <div>
-                <InputLabel for="name" value="Name" />
-
-                <TextInput
+                <label for="name" class="block text-sm text-slate-400 mb-2">Имя</label>
+                <input
                     id="name"
-                    type="text"
-                    class="mt-1 block w-full"
                     v-model="form.name"
+                    type="text"
                     required
                     autofocus
                     autocomplete="name"
+                    class="w-full rounded-xl border px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+                    style="background-color: #0B0E14; border-color: #2D3748;"
                 />
-
                 <InputError class="mt-2" :message="form.errors.name" />
             </div>
 
             <div>
-                <InputLabel for="email" value="Email" />
-
-                <TextInput
+                <label for="email" class="block text-sm text-slate-400 mb-2">Email</label>
+                <input
                     id="email"
-                    type="email"
-                    class="mt-1 block w-full"
                     v-model="form.email"
+                    type="email"
                     required
                     autocomplete="username"
+                    class="w-full rounded-xl border px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+                    style="background-color: #0B0E14; border-color: #2D3748;"
                 />
-
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div v-if="mustVerifyEmail && user.email_verified_at === null">
-                <p class="mt-2 text-sm text-gray-800">
-                    Your email address is unverified.
+            <div v-if="mustVerifyEmail && user.email_verified_at === null" class="rounded-lg p-4" style="background-color: #0B0E14;">
+                <p class="text-sm text-slate-400">
+                    Ваш email не подтверждён.
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        class="text-violet-400 hover:text-violet-300 underline"
                     >
-                        Click here to re-send the verification email.
+                        Отправить подтверждение повторно.
                     </Link>
                 </p>
-
-                <div
-                    v-show="status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
-                >
-                    A new verification link has been sent to your email address.
+                <div v-show="status === 'verification-link-sent'" class="mt-2 text-sm font-medium text-emerald-400">
+                    Новая ссылка отправлена на ваш email.
                 </div>
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+                <button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-all hover:-translate-y-0.5"
+                    style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);"
+                    :style="form.processing ? { opacity: 0.7, transform: 'none' } : {}"
+                >
+                    Сохранить
+                </button>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -99,12 +86,7 @@ const form = useForm({
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p
-                        v-if="form.recentlySuccessful"
-                        class="text-sm text-gray-600"
-                    >
-                        Saved.
-                    </p>
+                    <p v-if="form.recentlySuccessful" class="text-sm text-emerald-400">Сохранено.</p>
                 </Transition>
             </div>
         </form>
