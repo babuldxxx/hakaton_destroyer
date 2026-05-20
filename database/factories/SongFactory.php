@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Genre;
+use App\Models\Label;
 use App\Models\Song;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -22,11 +24,12 @@ class SongFactory extends Factory
         'lyrics' => fake()->paragraph(),
         'written_at' => fake()->date(),
         'released_at' => fake()->date(),
-        'label_id' => \App\Models\Label::factory(),
+        'label_id' => Label::factory(),
         'wav_path' => fake()->filePath(),
         'mp3_path' => fake()->filePath(),
         'isrc' => 'US-' . fake()->unique()->randomNumber(6, true),
-        'genre_id' => \App\Models\Genre::factory(),
+        'genre_id' => Genre::factory(),
+        'cover_path' => 'https://picsum.photos/400/400?random=' . rand(1, 1000),
         ];
     }
 }

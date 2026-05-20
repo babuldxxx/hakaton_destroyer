@@ -72,11 +72,10 @@ class Song extends Model
         return $this->belongsToMany(Artist::class, 'song_authors');
     }
 
-    public function earnings()
+    public function earnings(): HasMany
     {
-        return $this->hasMany(SongPlatformEarning::class);
+        return $this->hasMany(Earning::class);
     }
-
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);

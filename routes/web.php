@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 Route::get('/', fn () => redirect()->route('login'));
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         $user = auth()->user();
         if ($user->hasRole('artist')) {

@@ -6,24 +6,25 @@ import { Head, Link, useForm } from '@inertiajs/vue3'
 const role = ref('label')
 
 const form = useForm({
-    name: '',
     nickname: '',
     email: '',
     password: '',
     password_confirmation: '',
     role: role.value,
+    // name будет отправлен как скрытое поле
+    name: '',
 })
 
 const submit = () => {
     form.role = role.value
-    form.name = form.nickname || 'Пользователь'  // подставляем ник вместо имени
+    form.name = form.nickname   // имя по умолчанию равно никнейму
     form.post(route('register'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
     })
 }
 </script>
 
-<<template>
+<template>
     <GuestLayout>
         <Head title="Регистрация" />
 

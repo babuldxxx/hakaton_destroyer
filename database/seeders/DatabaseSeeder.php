@@ -15,7 +15,6 @@ use App\Models\Payout;
 use App\Models\Platform;
 use App\Models\Song;
 use App\Models\SongAuthor;
-use App\Models\Transaction;
 use App\Models\User;
 use App\Services\RoyaltyCalculator;
 use Illuminate\Database\Seeder;
@@ -25,35 +24,28 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 0. Площадки и роли
         $this->call(PlatformSeeder::class);
         $this->call(RolePermissionSeeder::class);
 
         // Жанры
-        $genres = [
-            ['name' => 'Pop'],
-            ['name' => 'Rock'],
-            ['name' => 'Hip-Hop'],
-            ['name' => 'Electronic'],
-            ['name' => 'R&B'],
-        ];
-        foreach ($genres as $g) {
-            Genre::firstOrCreate($g);
+        $genres = ['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'R&B', 'Jazz', 'Classical'];
+        foreach ($genres as $name) {
+            Genre::firstOrCreate(['name' => $name]);
         }
 
-        // ---------- ЛЕЙБЛ 1 ----------
-        $label1 = Label::factory()->create(['name' => 'Label One', 'description' => 'Первый крупный лейбл']);
+        // --- ЛЕЙБЛ 1 ---
+        $label1 = Label::factory()->create(['name' => 'Quantum Records', 'description' => 'Ведущий независимый лейбл']);
         $label1User = User::factory()->create([
-            'name'     => 'Label1 Manager',
+            'name'     => 'Алексей Менеджер',
             'email'    => 'label1@example.com',
             'password' => Hash::make('password'),
             'label_id' => $label1->id,
         ]);
         $label1User->assignRole('label');
 
-        // Артисты лейбла 1 (принятые)
         $artistsLabel1 = [];
-        for ($i = 1; $i <= 5; $i++) {
+        $stageNamesL1 = ['Vega Storm', 'Neon Pulse', 'Lunar Echo', 'Crystal Waves', 'Silver Fang', 'Ember Sky', 'Astra Nova'];
+        for ($i = 0; $i < 7; $i++) {
             $user = User::factory()->create([
                 'name'     => "Artist L1-{$i}",
                 'email'    => "artist1_{$i}@example.com",
@@ -64,26 +56,26 @@ class DatabaseSeeder extends Seeder
             $artist = Artist::factory()->create([
                 'user_id'    => $user->id,
                 'label_id'   => $label1->id,
-                'stage_name' => "Star L1-{$i}",
+                'stage_name' => $stageNamesL1[$i % count($stageNamesL1)],
                 'real_name'  => $user->name,
                 'status'     => 'approved',
             ]);
             $artistsLabel1[] = $artist;
         }
 
-        // ---------- ЛЕЙБЛ 2 ----------
-        $label2 = Label::factory()->create(['name' => 'Label Two', 'description' => 'Второй независимый лейбл']);
+        // --- ЛЕЙБЛ 2 ---
+        $label2 = Label::factory()->create(['name' => 'EchoSphere Music', 'description' => 'Электронная и инди-сцена']);
         $label2User = User::factory()->create([
-            'name'     => 'Label2 Manager',
+            'name'     => 'Мария Директор',
             'email'    => 'label2@example.com',
             'password' => Hash::make('password'),
             'label_id' => $label2->id,
         ]);
         $label2User->assignRole('label');
 
-        // Артисты лейбла 2 (принятые)
         $artistsLabel2 = [];
-        for ($i = 1; $i <= 5; $i++) {
+        $stageNamesL2 = ['Midnight Mirage', 'Digital Horizon', 'Stellar Drift', 'Nova Whisper', 'Echo Flux', 'Zenith Wave'];
+        for ($i = 0; $i < 6; $i++) {
             $user = User::factory()->create([
                 'name'     => "Artist L2-{$i}",
                 'email'    => "artist2_{$i}@example.com",
@@ -94,16 +86,17 @@ class DatabaseSeeder extends Seeder
             $artist = Artist::factory()->create([
                 'user_id'    => $user->id,
                 'label_id'   => $label2->id,
-                'stage_name' => "Star L2-{$i}",
+                'stage_name' => $stageNamesL2[$i],
                 'real_name'  => $user->name,
                 'status'     => 'approved',
             ]);
             $artistsLabel2[] = $artist;
         }
 
-        // Непривязанные артисты (pending) – 3 шт.
+        // Свободные артисты
         $pendingArtists = [];
-        for ($i = 1; $i <= 3; $i++) {
+        $freeNames = ['Shadow Voice', 'Dream Walker', 'Skyline Riot'];
+        for ($i = 0; $i < 3; $i++) {
             $user = User::factory()->create([
                 'name'     => "Free Artist {$i}",
                 'email'    => "free{$i}@example.com",
@@ -112,7 +105,7 @@ class DatabaseSeeder extends Seeder
             $user->assignRole('artist');
             $artist = Artist::factory()->create([
                 'user_id'    => $user->id,
-                'stage_name' => "FreeStar {$i}",
+                'stage_name' => $freeNames[$i],
                 'real_name'  => $user->name,
                 'status'     => 'pending',
                 'label_id'   => null,
@@ -120,23 +113,15 @@ class DatabaseSeeder extends Seeder
             $pendingArtists[] = $artist;
         }
 
-        // ---------- ПРИГЛАШЕНИЯ ----------
+        // Приглашения
         if (isset($pendingArtists[0])) {
-            Invitation::create([
-                'label_id'  => $label1->id,
-                'artist_id' => $pendingArtists[0]->id,
-                'status'    => 'pending',
-            ]);
+            Invitation::create(['label_id' => $label1->id, 'artist_id' => $pendingArtists[0]->id, 'status' => 'pending']);
         }
         if (isset($pendingArtists[1])) {
-            Invitation::create([
-                'label_id'  => $label2->id,
-                'artist_id' => $pendingArtists[1]->id,
-                'status'    => 'pending',
-            ]);
+            Invitation::create(['label_id' => $label2->id, 'artist_id' => $pendingArtists[1]->id, 'status' => 'pending']);
         }
 
-        // ---------- ПЕСНИ ----------
+        // --- ТРЕКИ ---
         $allArtists = array_merge($artistsLabel1, $artistsLabel2);
         $platforms = Platform::all();
         $songTitles = [
@@ -144,20 +129,29 @@ class DatabaseSeeder extends Seeder
             'Neon Nights', 'Lost in Tokyo', 'Ocean Drive', 'Crystal Tears',
             'Firestorm', 'Silent Echo', 'Starlight', 'Velocity',
             'Bittersweet', 'Horizon', 'Lunar', 'Fade Away',
-            'Rising Sun', 'Afterglow', 'Phantom', 'Dynamite'
+            'Rising Sun', 'Afterglow', 'Phantom', 'Dynamite',
+            'Skybound', 'Frozen Flame', 'Neon Jungle', 'Silver Lining',
+            'Echoes of You', 'Runaway', 'Higher Ground', 'Into the Blue',
+            'Shattered Glass', 'Last Goodbye', 'Wildfire', 'Gravity'
         ];
 
-        foreach ($songTitles as $index => $title) {
+        $calculator = app(RoyaltyCalculator::class);
+
+        foreach ($songTitles as $title) {
             $artist = $allArtists[array_rand($allArtists)];
             $genre = Genre::inRandomOrder()->first();
             $label = $artist->label;
+
+            // Дата выпуска в пределах последнего года
+            $releasedAt = now()->subDays(rand(10, 365));
+            $writtenAt = $releasedAt->copy()->subMonths(rand(1, 4));
 
             $song = Song::factory()->create([
                 'title'       => $title,
                 'label_id'    => $label ? $label->id : null,
                 'genre_id'    => $genre->id,
-                'written_at'  => now()->subMonths(rand(1, 12)),
-                'released_at' => now()->subDays(rand(10, 365)),
+                'written_at'  => $writtenAt,
+                'released_at' => $releasedAt,
             ]);
 
             $song->platforms()->sync(
@@ -186,39 +180,41 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
 
-            // Доходы и распределение
-            $calculator = app(RoyaltyCalculator::class);
+            // Доходы за 12 месяцев (последний год)
+            // Доходы за последние 12 месяцев
             foreach ($song->platforms as $platform) {
-                for ($m = 0; $m < 6; $m++) {
-                    $period = now()->subMonths($m)->format('Y-m');
-                    $gross = rand(500, 5000) + (rand(0, 99) / 100);
+                for ($m = 11; $m >= 0; $m--) {   // от 11 месяцев назад до текущего
+                    $periodDate = now()->subMonths($m)->startOfMonth();
+                    $period = $periodDate->format('Y-m');
+                    $gross = rand(300, 8000) + (rand(0, 99) / 100);
                     $earning = Earning::create([
                         'song_id'             => $song->id,
                         'platform_id'         => $platform->id,
                         'period'              => $period,
                         'gross_amount'        => $gross,
-                        'label_share_percent' => rand(0, 30),
+                        'label_share_percent' => rand(0, 25),
                         'created_by'          => $label ? $label->users()->first()?->id ?? 1 : 1,
                         'status'              => 'pending',
+                        'created_at'          => $periodDate->toDateTimeString(), // ← важно
                     ]);
                     $calculator->distribute($earning);
                 }
             }
         }
 
-        // ---------- ТРАНЗАКЦИИ (уже созданы через distribute) ----------
-
-        // ---------- ВЫПЛАТЫ ----------
+        // --- ВЫПЛАТЫ ---
         foreach ($allArtists as $artist) {
-            if (rand(0, 1)) {
+            // Одна-две завершённые выплаты
+            for ($k = 0; $k < rand(1, 2); $k++) {
                 Payout::create([
                     'artist_id' => $artist->id,
-                    'amount'    => rand(10000, 50000),
+                    'amount'    => rand(15000, 60000),
                     'method'    => 'Банковская карта',
                     'status'    => PayoutStatus::Completed,
-                    'paid_at'   => now()->subDays(rand(1, 30)),
+                    'paid_at'   => now()->subDays(rand(5, 350)),
                 ]);
             }
+            // Одна ожидающая
             if (rand(0, 1)) {
                 Payout::create([
                     'artist_id' => $artist->id,
@@ -229,9 +225,9 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // ---------- КАСТОМНЫЕ ЗАКАЗЫ ----------
+        // --- КАСТОМНЫЕ ЗАКАЗЫ ---
         foreach ([$label1, $label2] as $label) {
-            for ($i = 0; $i < 2; $i++) {
+            for ($i = 0; $i < 3; $i++) {
                 $song = Song::where('label_id', $label->id)->inRandomOrder()->first();
                 if ($song) {
                     CustomOrder::create([
@@ -239,7 +235,7 @@ class DatabaseSeeder extends Seeder
                         'song_id'            => $song->id,
                         'client_name'        => "Клиент " . chr(65+$i),
                         'description'        => "Заказ на создание трека",
-                        'total_amount'       => rand(20000, 100000),
+                        'total_amount'       => rand(30000, 120000),
                         'label_share_percentage'=> rand(10, 30),
                     ]);
                 }

@@ -4,12 +4,15 @@ import { Head, useForm } from '@inertiajs/vue3'
 import { Link } from '@inertiajs/vue3'
 import GuestLayout from '@/Layouts/GuestLayout.vue'
 
-const mode = ref('login')
+const mode = ref('login')          // 'login' | 'forgot'
+const loginMode = ref('email')     // 'email' | 'nickname'
 
 const loginForm = useForm({
+    email: '',
     nickname: '',
     password: '',
     remember: false,
+    login_type: 'email',           // подсказка серверу
 })
 
 const forgotForm = useForm({
@@ -17,6 +20,7 @@ const forgotForm = useForm({
 })
 
 function submitLogin() {
+    loginForm.login_type = loginMode.value
     loginForm.post(route('login'), {
         onFinish: () => loginForm.reset('password'),
     })
@@ -27,7 +31,7 @@ function submitForgot() {
 }
 </script>
 
-<<template>
+<template>
     <GuestLayout>
         <Head title="Вход" />
 
@@ -35,7 +39,8 @@ function submitForgot() {
             class="w-full max-w-[420px] rounded-[20px] border p-8 md:p-10"
             style="background-color: #1A1F2B; border-color: #2D3748; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);"
         >
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl" style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl"
+                 style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
                 <svg class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -59,8 +64,54 @@ function submitForgot() {
                     leave-to-class="transform -translate-y-3 opacity-0"
                 >
 
+                    <!-- Форма входа -->
                     <form v-if="mode === 'login'" key="login" @submit.prevent="submitLogin" class="space-y-4">
-                        <div>
+                        <!-- Переключатель Email / Никнейм -->
+                        <div class="flex rounded-xl p-1" style="background-color: #13161f;">
+                            <button
+                                type="button"
+                                @click="loginMode = 'email'"
+                                :class="[
+                                    'flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
+                                    loginMode === 'email'
+                                        ? 'text-white shadow-lg'
+                                        : 'text-[#64748B] hover:text-white hover:bg-white/5'
+                                ]"
+                                :style="loginMode === 'email' ? { background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' } : {}"
+                            >
+                                Email
+                            </button>
+                            <button
+                                type="button"
+                                @click="loginMode = 'nickname'"
+                                :class="[
+                                    'flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
+                                    loginMode === 'nickname'
+                                        ? 'text-white shadow-lg'
+                                        : 'text-[#64748B] hover:text-white hover:bg-white/5'
+                                ]"
+                                :style="loginMode === 'nickname' ? { background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' } : {}"
+                            >
+                                Никнейм
+                            </button>
+                        </div>
+
+                        <!-- Поле Email -->
+                        <div v-if="loginMode === 'email'">
+                            <input
+                                v-model="loginForm.email"
+                                type="email"
+                                required
+                                autofocus
+                                placeholder="Email"
+                                class="w-full rounded-xl border px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+                                style="background-color: #0B0E14; border-color: #2D3748;"
+                            />
+                            <p v-if="loginForm.errors.email" class="mt-1 text-xs text-red-400">{{ loginForm.errors.email }}</p>
+                        </div>
+
+                        <!-- Поле Никнейм -->
+                        <div v-if="loginMode === 'nickname'">
                             <input
                                 v-model="loginForm.nickname"
                                 type="text"
@@ -73,6 +124,7 @@ function submitForgot() {
                             <p v-if="loginForm.errors.nickname" class="mt-1 text-xs text-red-400">{{ loginForm.errors.nickname }}</p>
                         </div>
 
+                        <!-- Пароль -->
                         <div>
                             <input
                                 v-model="loginForm.password"
@@ -117,6 +169,7 @@ function submitForgot() {
                         </div>
                     </form>
 
+                    <!-- Форма восстановления -->
                     <form v-else key="forgot" @submit.prevent="submitForgot" class="space-y-4">
                         <h2 class="text-lg font-semibold text-white">Восстановление пароля</h2>
                         <p class="text-sm" style="color: #94A3B8;">
