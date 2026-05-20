@@ -88,7 +88,7 @@ const detach = (artistId) => {
                             </div>
                             <div class="flex flex-col items-center gap-1">
                                 <span class="text-xs text-slate-400">Треков</span>
-                                <span class="text-xl font-bold text-white">{{ artist.songs?.length ?? 0 }}</span>
+                                <span class="text-xl font-bold text-white">{{ artist.songs_count ?? 0 }}</span>
                             </div>
                         </div>
 

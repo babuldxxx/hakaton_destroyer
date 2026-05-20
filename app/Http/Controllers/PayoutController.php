@@ -14,19 +14,23 @@ class PayoutController extends Controller
     public function index()
     {
         // ---------- ЛЕЙБЛ ----------
-        if (auth()->user()->hasRole('label')){
-          $artists = Artist::select('artists.id', 'users.name as artist_name', 'artists.user_id')
-              ->selectRaw('COALESCE(SUM(CASE WHEN transactions.status = ? THEN transactions.amount ELSE 0 END), 0) as pending_amount', ['pending'])
-              ->selectRaw('COUNT(CASE WHEN transactions.status = ? THEN 1 END) as pending_count', ['pending'])
-              ->leftJoin('users', 'users.id', '=', 'artists.user_id')
-              ->leftJoin('transactions', 'transactions.artist_id', '=', 'artists.id')
-              ->groupBy('artists.id', 'users.name', 'artists.user_id')
-              ->havingRaw('pending_amount > 0')
-              ->get();
+        if (auth()->user()->hasRole('label')) {
+            $labelId = auth()->user()->label_id;
 
-          $payouts = Payout::with(['artist.user'])
-              ->latest()
-              ->paginate(20);
+            $artists = Artist::select('artists.id', 'users.name as artist_name', 'artists.user_id')
+                ->selectRaw('COALESCE(SUM(CASE WHEN transactions.status = ? THEN transactions.amount ELSE 0 END), 0) as pending_amount', ['pending'])
+                ->selectRaw('COUNT(CASE WHEN transactions.status = ? THEN 1 END) as pending_count', ['pending'])
+                ->leftJoin('users', 'users.id', '=', 'artists.user_id')
+                ->leftJoin('transactions', 'transactions.artist_id', '=', 'artists.id')
+                ->where('artists.label_id', $labelId)
+                ->groupBy('artists.id', 'users.name', 'artists.user_id')
+                ->havingRaw('pending_amount > 0')
+                ->get();
+
+            $payouts = Payout::whereHas('artist', fn ($q) => $q->where('label_id', $labelId))
+                ->with(['artist.user'])
+                ->latest()
+                ->paginate(20);
 
             return Inertia::render('Payouts/Index', [
                 'artists' => $artists,
@@ -121,6 +125,8 @@ class PayoutController extends Controller
 
     private function ensureLabel(): void
     {
-        if (auth()->user()->hasRole('label')) abort(403);
+        if (!auth()->user()->hasRole('label')) {
+            abort(403);
+        }
     }
 }

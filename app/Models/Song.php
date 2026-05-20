@@ -31,6 +31,13 @@ class Song extends Model
         if (!$this->cover_path) {
             return '/images/default-cover.jpg';
         }
+
+        // Если это внешняя ссылка (picsum) — возвращаем как есть
+        if (filter_var($this->cover_path, FILTER_VALIDATE_URL)) {
+            return $this->cover_path;
+        }
+
+        // Иначе — локальный файл
         return Storage::disk('public')->url($this->cover_path);
     }
 

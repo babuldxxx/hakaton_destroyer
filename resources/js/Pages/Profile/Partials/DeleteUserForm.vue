@@ -1,12 +1,6 @@
 <script setup>
-import DangerButton from '@/Components/DangerButton.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import Modal from '@/Components/Modal.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
-import { nextTick, ref } from 'vue';
+import { ref, nextTick } from 'vue';
 
 const confirmingUserDeletion = ref(false);
 const passwordInput = ref(null);
@@ -17,92 +11,79 @@ const form = useForm({
 
 const confirmUserDeletion = () => {
     confirmingUserDeletion.value = true;
-
-    nextTick(() => passwordInput.value.focus());
+    nextTick(() => passwordInput.value?.focus());
 };
 
 const deleteUser = () => {
     form.delete(route('profile.destroy'), {
         preserveScroll: true,
         onSuccess: () => closeModal(),
-        onError: () => passwordInput.value.focus(),
+        onError: () => passwordInput.value?.focus(),
         onFinish: () => form.reset(),
     });
 };
 
 const closeModal = () => {
     confirmingUserDeletion.value = false;
-
     form.clearErrors();
     form.reset();
 };
 </script>
 
 <template>
-    <section class="space-y-6">
-        <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Delete Account
-            </h2>
-
-            <p class="mt-1 text-sm text-gray-600">
-                Once your account is deleted, all of its resources and data will
-                be permanently deleted. Before deleting your account, please
-                download any data or information that you wish to retain.
+    <section>
+        <header class="mb-6">
+            <h2 class="text-lg font-semibold text-white">Удалить аккаунт</h2>
+            <p class="mt-1 text-sm text-slate-400">
+                После удаления все данные будут безвозвратно потеряны. Сохраните нужную информацию перед удалением.
             </p>
         </header>
 
-        <DangerButton @click="confirmUserDeletion">Delete Account</DangerButton>
+        <button
+            @click="confirmUserDeletion"
+            class="rounded-xl px-6 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition"
+        >
+            Удалить аккаунт
+        </button>
 
-        <Modal :show="confirmingUserDeletion" @close="closeModal">
-            <div class="p-6">
-                <h2
-                    class="text-lg font-medium text-gray-900"
-                >
-                    Are you sure you want to delete your account?
-                </h2>
-
-                <p class="mt-1 text-sm text-gray-600">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Please enter your password to
-                    confirm you would like to permanently delete your account.
+        <!-- Модальное окно -->
+        <div v-if="confirmingUserDeletion" class="fixed inset-0 z-50 flex items-center justify-center px-4" style="background-color: rgba(0,0,0,0.7);">
+            <div class="w-full max-w-md rounded-xl border p-6" style="background-color: #1A1F2B; border-color: #2D3748;">
+                <h2 class="text-lg font-semibold text-white mb-2">Вы уверены?</h2>
+                <p class="text-sm text-slate-400 mb-6">
+                    Введите пароль для подтверждения удаления аккаунта.
                 </p>
 
-                <div class="mt-6">
-                    <InputLabel
-                        for="password"
-                        value="Password"
-                        class="sr-only"
-                    />
-
-                    <TextInput
-                        id="password"
+                <div class="mb-4">
+                    <input
                         ref="passwordInput"
                         v-model="form.password"
                         type="password"
-                        class="mt-1 block w-3/4"
-                        placeholder="Password"
+                        placeholder="Пароль"
+                        class="w-full rounded-xl border px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-violet-500"
+                        style="background-color: #0B0E14; border-color: #2D3748;"
                         @keyup.enter="deleteUser"
                     />
-
-                    <InputError :message="form.errors.password" class="mt-2" />
+                    <p v-if="form.errors.password" class="mt-2 text-sm text-red-400">{{ form.errors.password }}</p>
                 </div>
 
-                <div class="mt-6 flex justify-end">
-                    <SecondaryButton @click="closeModal">
-                        Cancel
-                    </SecondaryButton>
-
-                    <DangerButton
-                        class="ms-3"
-                        :class="{ 'opacity-25': form.processing }"
-                        :disabled="form.processing"
-                        @click="deleteUser"
+                <div class="flex justify-end gap-3">
+                    <button
+                        @click="closeModal"
+                        class="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-400 bg-[#0B0E14] border border-[#2D3748] hover:text-white transition"
                     >
-                        Delete Account
-                    </DangerButton>
+                        Отмена
+                    </button>
+                    <button
+                        @click="deleteUser"
+                        :disabled="form.processing"
+                        class="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition"
+                        :style="form.processing ? { opacity: 0.7 } : {}"
+                    >
+                        Удалить
+                    </button>
                 </div>
             </div>
-        </Modal>
+        </div>
     </section>
 </template>

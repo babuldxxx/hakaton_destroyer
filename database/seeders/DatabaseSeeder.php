@@ -152,6 +152,7 @@ class DatabaseSeeder extends Seeder
                 'genre_id'    => $genre->id,
                 'written_at'  => $writtenAt,
                 'released_at' => $releasedAt,
+                'cover_path' => 'https://loremflickr.com/400/400/music,album?random=' . rand(1, 1000),
             ]);
 
             $song->platforms()->sync(

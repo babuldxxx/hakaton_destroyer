@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Artist;
+use App\Models\Earning;
 use App\Models\Invitation;
 use App\Models\Label;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class ArtistController extends Controller
         $myArtists = Artist::where('label_id', $label->id)
             ->where('status', 'approved')
             ->with('user')
+            ->withCount('songs')
             ->get();
 
         $pendingArtists = Artist::whereNull('label_id')
@@ -44,8 +46,68 @@ class ArtistController extends Controller
     public function show(Artist $artist)
     {
         $this->authorize('view', $artist);
-        $artist->load(['user', 'songs']);
-        return Inertia::render('Artists/Show', ['artist' => $artist]);
+        $artist->load(['user', 'songs.genre']);
+
+        // Данные для графика доходов по месяцам (последние 12 месяцев)
+        $revenueData = $this->getArtistRevenueData($artist);
+
+        // Данные о доходах по площадкам
+        $platformRevenue = Earning::whereHas('song.songAuthors', function ($q) use ($artist) {
+            $q->where('artist_id', $artist->id);
+        })
+            ->with('platform')
+            ->get()
+            ->groupBy('platform_id')
+            ->map(fn ($group) => [
+                'platform' => $group->first()->platform->name,
+                'total'    => $group->sum('gross_amount'),
+            ])
+            ->values();
+
+        return Inertia::render('Artists/Show', [
+            'artist'        => $artist,
+            'revenueData'   => $revenueData,
+            'platformRevenue' => $platformRevenue,
+        ]);
+    }
+
+    /**
+     * Готовит данные для графика доходов артиста по месяцам
+     */
+    private function getArtistRevenueData($artist): array
+    {
+        $currentYear = now()->year;
+        $monthly = \App\Models\Earning::whereHas('song.songAuthors', fn ($q) => $q->where('artist_id', $artist->id))
+            ->whereYear('created_at', $currentYear)
+            ->selectRaw('MONTH(created_at) as month, SUM(gross_amount) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month');
+
+        $labels = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+        $data = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $data[] = (float) ($monthly[$m] ?? 0);
+        }
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Доход',
+                    'data' => $data,
+                    'borderColor' => '#7C3AED',
+                    'backgroundColor' => 'rgba(124, 58, 237, 0.08)',
+                    'borderWidth' => 3,
+                    'pointBackgroundColor' => '#7C3AED',
+                    'pointBorderColor' => '#0B0E14',
+                    'pointBorderWidth' => 2,
+                    'pointRadius' => 5,
+                    'pointHoverRadius' => 7,
+                    'tension' => 0.4,
+                    'fill' => true,
+                ]
+            ]
+        ];
     }
 
     public function invite(Request $request, Artist $artist)
