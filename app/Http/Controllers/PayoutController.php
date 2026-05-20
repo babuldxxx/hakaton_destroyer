@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Artist;
-use App\Models\Payout;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,122 +9,130 @@ use Inertia\Inertia;
 
 class PayoutController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // ---------- ЛЕЙБЛ ----------
-        if (auth()->user()->hasRole('label')) {
-            $labelId = auth()->user()->label_id;
+        $user = $request->user();
 
-            $artists = Artist::select('artists.id', 'users.name as artist_name', 'artists.user_id')
-                ->selectRaw('COALESCE(SUM(CASE WHEN transactions.status = ? THEN transactions.amount ELSE 0 END), 0) as pending_amount', ['pending'])
-                ->selectRaw('COUNT(CASE WHEN transactions.status = ? THEN 1 END) as pending_count', ['pending'])
-                ->leftJoin('users', 'users.id', '=', 'artists.user_id')
-                ->leftJoin('transactions', 'transactions.artist_id', '=', 'artists.id')
-                ->where('artists.label_id', $labelId)
-                ->groupBy('artists.id', 'users.name', 'artists.user_id')
-                ->havingRaw('pending_amount > 0')
+        // ─── АРТИСТ ───
+        if ($user->hasRole('artist')) {
+            $artist = $user->artist;
+
+            if (! $artist) {
+                return Inertia::render('Payouts/Index', [
+                    'artists'      => [],
+                    'payouts'      => [],
+                    'stats'        => ['balance' => 0, 'total_earned' => 0, 'total_paid' => 0],
+                    'transactions' => [],
+                ]);
+            }
+
+            $base = Transaction::where('artist_id', $artist->id);
+
+            $balance = (clone $base)
+                ->whereIn('type', ['author_rights', 'related_rights'])
+                ->where('status', 'pending')
+                ->sum('amount');
+
+            $totalEarned = (clone $base)
+                ->whereIn('type', ['author_rights', 'related_rights'])
+                ->sum('amount');
+
+            $totalPaid = (clone $base)
+                ->where('type', 'payout')
+                ->where('status', 'completed')
+                ->sum('amount'); // отрицательное
+
+            $transactions = (clone $base)
+                ->with(['earning.song'])
+                ->orderByDesc('created_at')
                 ->get();
 
-            $payouts = Payout::whereHas('artist', fn ($q) => $q->where('label_id', $labelId))
-                ->with(['artist.user'])
-                ->latest()
-                ->paginate(20);
-
             return Inertia::render('Payouts/Index', [
-                'artists' => $artists,
-                'payouts' => $payouts,
+                'artists'      => [],
+                'payouts'      => [],
+                'stats'        => [
+                    'balance'      => (float) $balance,
+                    'total_earned' => (float) $totalEarned,
+                    'total_paid'   => abs((float) $totalPaid),
+                ],
+                'transactions' => $transactions,
             ]);
         }
 
-        // ---------- АРТИСТ ----------
-        $artist = Artist::where('user_id', auth()->id())->first();
-        if (!$artist) abort(403);
+        // ─── ЛЕЙБЛ ───
+        $labelId = $user->label_id;
 
-        $stats = [
-            'balance'      => Transaction::where('artist_id', $artist->id)->where('status', 'pending')->sum('amount'),
-            'total_earned' => Transaction::where('artist_id', $artist->id)->sum('amount'),
-            'total_paid'   => Payout::where('artist_id', $artist->id)->where('status', 'paid')->sum('amount'),
-        ];
+        // Суммируем pending начисления по артистам
+        $artists = Transaction::query()
+            ->whereHas('earning', fn ($q) => $q->where('label_id', $labelId))
+            ->whereIn('type', ['author_rights', 'related_rights'])
+            ->where('status', 'pending')
+            ->with('artist')
+            ->get()
+            ->groupBy('artist_id')
+            ->map(fn ($items, $artistId) => [
+                'id'             => (int) $artistId,
+                'artist_name'    => $items->first()->artist?->stage_name ?? 'Неизвестно',
+                'pending_count'  => $items->count(),
+                'pending_amount' => round($items->sum('amount'), 2),
+            ])
+            ->values();
 
-        $transactions = Transaction::with('earning.song')
-            ->where('artist_id', $artist->id)
-            ->latest()
-            ->paginate(20);
-
-        $payouts = Payout::where('artist_id', $artist->id)
-            ->latest()
-            ->paginate(10);
+        // История выплат (type = payout, записано со знаком минус)
+        $payouts = Transaction::query()
+            ->whereHas('earning', fn ($q) => $q->where('label_id', $labelId))
+            ->where('type', 'payout')
+            ->with('artist')
+            ->orderByDesc('created_at')
+            ->get();
 
         return Inertia::render('Payouts/Index', [
-            'stats'        => $stats,
-            'transactions' => $transactions,
+            'artists'      => $artists,
             'payouts'      => $payouts,
+            'stats'        => (object) [],
+            'transactions' => [],
         ]);
     }
 
     public function store(Request $request)
     {
-        $this->ensureLabel();
+        $request->validate(['artist_id' => 'required|integer']);
 
-        $validated = $request->validate([
-            'artist_id' => 'required|exists:artists,id',
-            'method'    => 'nullable|string|max:255',
-            'details'   => 'nullable|string',
-        ]);
+        $labelId = $request->user()->label_id;
 
-        DB::transaction(function () use ($validated) {
-            $transactions = Transaction::where('artist_id', $validated['artist_id'])
+        DB::transaction(function () use ($request, $labelId) {
+            $pendingTx = Transaction::query()
+                ->whereHas('earning', fn ($q) => $q->where('label_id', $labelId))
+                ->where('artist_id', $request->artist_id)
+                ->whereIn('type', ['author_rights', 'related_rights'])
                 ->where('status', 'pending')
                 ->lockForUpdate()
                 ->get();
 
-            if ($transactions->isEmpty()) {
-                abort(400, 'Нет доступных начислений для выплаты.');
+            if ($pendingTx->isEmpty()) {
+                abort(422, 'Нет начислений для выплаты');
             }
 
-            $total = $transactions->sum('amount');
+            $total = round($pendingTx->sum('amount'), 2);
 
-            $payout = Payout::create([
-                'artist_id'  => $validated['artist_id'],
-                'amount'     => $total,
-                'currency'   => 'RUB',
-                'status'     => 'pending',
-                'method'     => $validated['method'] ?? 'bank',
-                'details'    => $validated['details'] ?? null,
-                'created_by' => auth()->id(),
+            // Запись о расходе (выплате)
+            Transaction::create([
+                'user_id'     => auth()->id(),
+                'artist_id'   => $request->artist_id,
+                'song_id'     => null,
+                'platform_id' => null,
+                'type'        => 'payout',
+                'amount'      => -$total,
+                'description' => 'Выплата артисту',
+                'status'      => 'completed',
+                'period'      => now()->format('Y-m'),
             ]);
 
-            foreach ($transactions as $tx) {
-                $tx->update([
-                    'payout_id' => $payout->id,
-                    'status'    => 'on_hold',
-                ]);
-            }
+            // Закрываем начисления
+            Transaction::whereIn('id', $pendingTx->pluck('id'))
+                ->update(['status' => 'paid']);
         });
 
-        return redirect()->route('payouts.index')->with('success', 'Выплата создана.');
-    }
-
-    public function markPaid(Payout $payout)
-    {
-        $this->ensureLabel();
-
-        DB::transaction(function () use ($payout) {
-            $payout->update([
-                'status'  => 'paid',
-                'paid_at' => now(),
-            ]);
-
-            $payout->transactions()->update(['status' => 'paid']);
-        });
-
-        return back()->with('success', 'Выплата подтверждена.');
-    }
-
-    private function ensureLabel(): void
-    {
-        if (!auth()->user()->hasRole('label')) {
-            abort(403);
-        }
+        return redirect()->route('payouts.index')->with('success', 'Выплата выполнена');
     }
 }
