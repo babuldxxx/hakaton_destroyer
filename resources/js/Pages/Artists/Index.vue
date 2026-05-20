@@ -1,6 +1,7 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const page = usePage()
 
@@ -20,88 +21,144 @@ const detach = (artistId) => {
     if (!confirm('Отвязать артиста от лейбла? Все приглашения будут аннулированы.')) return
     router.delete(route('artists.destroy', artistId), { preserveScroll: true })
 }
-
-const isLabel = computed(() => {
-    const roles = page.props.auth?.user?.roles
-    return roles?.includes('label')
-})
 </script>
 
 <template>
-    <div class="p-6 md:p-10 max-w-7xl mx-auto">
-        <h1 class="text-3xl font-bold text-white mb-6">Управление артистами</h1>
+    <AuthenticatedLayout>
+        <div class="p-6 md:p-10 max-w-7xl mx-auto">
+            <h1 class="text-[32px] font-bold text-white mb-6">Мои артисты</h1>
 
-        <div class="flex gap-4 mb-8">
-            <button @click="activeTab = 'approved'"
-                :class="activeTab === 'approved' ? 'bg-violet-600 text-white' : 'bg-[#1A1F2B] text-gray-300 border border-[#2D3748]'"
-                class="px-5 py-2.5 rounded-lg text-sm font-medium transition">
-                Мои артисты ({{ artists.length }})
-            </button>
-            <button @click="activeTab = 'pending'"
-                :class="activeTab === 'pending' ? 'bg-violet-600 text-white' : 'bg-[#1A1F2B] text-gray-300 border border-[#2D3748]'"
-                class="px-5 py-2.5 rounded-lg text-sm font-medium transition">
-                Свободные артисты ({{ pendingArtists.length }})
-            </button>
-        </div>
+            <!-- Вкладки -->
+            <div class="flex gap-2 mb-8">
+                <button
+                    @click="activeTab = 'approved'"
+                    class="px-5 py-2.5 rounded-xl text-sm font-medium transition"
+                    :class="activeTab === 'approved'
+                        ? 'text-white bg-gradient-to-r from-violet-500 to-blue-500'
+                        : 'text-slate-400 bg-[#1A1F2B] border border-slate-700 hover:text-white'"
+                >
+                    Мои артисты ({{ artists.length }})
+                </button>
+                <button
+                    @click="activeTab = 'pending'"
+                    class="px-5 py-2.5 rounded-xl text-sm font-medium transition"
+                    :class="activeTab === 'pending'
+                        ? 'text-white bg-gradient-to-r from-violet-500 to-blue-500'
+                        : 'text-slate-400 bg-[#1A1F2B] border border-slate-700 hover:text-white'"
+                >
+                    Свободные артисты ({{ pendingArtists.length }})
+                </button>
+            </div>
 
-        <!-- Мои артисты -->
-        <div v-if="activeTab === 'approved'">
-            <div v-if="artists.length === 0" class="text-gray-400 py-10 text-center">Нет привязанных артистов.</div>
-            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                <div v-for="artist in artists" :key="artist.id"
-                    class="rounded-xl border p-4 transition hover:border-indigo-500/50"
-                    style="background-color: #1A1F2B; border-color: #2D3748;">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                            style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
-                            {{ artist.stage_name?.charAt(0) ?? 'A' }}
+            <!-- Мои артисты -->
+            <div v-if="activeTab === 'approved'">
+                <div v-if="artists.length === 0" class="text-slate-400 py-10 text-center">
+                    Нет привязанных артистов.
+                </div>
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div
+                        v-for="artist in artists"
+                        :key="artist.id"
+                        class="group relative bg-[#1A1F2B] rounded-[20px] p-6 transition-all duration-300 hover:shadow-[0_0_0_1.5px_rgba(124,58,237,0.5)]"
+                    >
+                        <div class="flex justify-center mb-4">
+                            <div class="w-28 h-28 rounded-2xl p-1"
+                                 style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+                                <div class="w-full h-full rounded-xl flex items-center justify-center text-4xl font-bold text-white"
+                                     style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+                                    {{ artist.stage_name?.charAt(0) ?? 'A' }}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-white font-semibold truncate">{{ artist.stage_name }}</h3>
-                            <p class="text-xs text-gray-400">{{ artist.real_name }}</p>
+
+                        <div class="text-center">
+                            <h3 class="text-lg font-bold text-white mb-1">{{ artist.stage_name }}</h3>
+                            <p class="text-sm text-slate-400 mb-3">{{ artist.real_name }}</p>
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-violet-500/10 text-violet-400">
+                                Активен
+                            </span>
                         </div>
-                    </div>
-                    <div class="text-sm text-gray-300 truncate mb-2">{{ artist.user?.email }}</div>
-                    <div class="flex items-center justify-between mt-4">
-                        <Link :href="route('artists.show', artist.id)"
-                            class="text-xs px-3 py-1.5 rounded-md bg-gray-700 text-gray-200 hover:bg-gray-600 transition">
-                            Профиль
-                        </Link>
-                        <button @click="detach(artist.id)"
-                            class="text-xs px-3 py-1.5 rounded-md bg-red-600/80 text-white hover:bg-red-500 transition">
-                            Отвязать
-                        </button>
+
+                        <div class="grid grid-cols-2 divide-x divide-white/5 border-t border-white/5 pt-4 mt-4 mb-4">
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-xs text-slate-400">Email</span>
+                                <span class="text-sm font-medium text-white truncate max-w-[120px]">
+                                    {{ artist.user?.email ?? '—' }}
+                                </span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-xs text-slate-400">Треков</span>
+                                <span class="text-xl font-bold text-white">{{ artist.songs?.length ?? 0 }}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <Link
+                                :href="route('artists.show', artist.id)"
+                                class="flex-1 py-2.5 rounded-xl text-center text-white text-sm font-medium transition hover:opacity-90"
+                                style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);"
+                            >
+                                Подробнее
+                            </Link>
+                            <button
+                                @click="detach(artist.id)"
+                                class="px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 transition"
+                            >
+                                Отвязать
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Свободные артисты -->
-        <div v-if="activeTab === 'pending'">
-            <div v-if="pendingArtists.length === 0" class="text-gray-400 py-10 text-center">Нет свободных артистов.</div>
-            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                <div v-for="artist in pendingArtists" :key="artist.id"
-                    class="rounded-xl border p-4 transition hover:border-indigo-500/50"
-                    style="background-color: #1A1F2B; border-color: #2D3748;">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                            style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
-                            {{ artist.stage_name?.charAt(0) ?? 'A' }}
+            <!-- Свободные артисты -->
+            <div v-if="activeTab === 'pending'">
+                <div v-if="pendingArtists.length === 0" class="text-slate-400 py-10 text-center">
+                    Нет свободных артистов.
+                </div>
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div
+                        v-for="artist in pendingArtists"
+                        :key="artist.id"
+                        class="group relative bg-[#1A1F2B] rounded-[20px] p-6 transition-all duration-300 hover:shadow-[0_0_0_1.5px_rgba(124,58,237,0.5)]"
+                    >
+                        <div class="flex justify-center mb-4">
+                            <div class="w-28 h-28 rounded-2xl p-1"
+                                 style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+                                <div class="w-full h-full rounded-xl flex items-center justify-center text-4xl font-bold text-white"
+                                     style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);">
+                                    {{ artist.stage_name?.charAt(0) ?? 'A' }}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-white font-semibold truncate">{{ artist.stage_name }}</h3>
-                            <p class="text-xs text-gray-400">{{ artist.real_name }}</p>
+
+                        <div class="text-center">
+                            <h3 class="text-lg font-bold text-white mb-1">{{ artist.stage_name }}</h3>
+                            <p class="text-sm text-slate-400 mb-3">{{ artist.real_name }}</p>
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">
+                                Ожидает приглашения
+                            </span>
                         </div>
-                    </div>
-                    <div class="text-sm text-gray-300 truncate mb-2">{{ artist.user?.email }}</div>
-                    <div class="mt-4">
-                        <button @click="invite(artist.id)"
-                            class="w-full text-xs px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-500 transition">
+
+                        <div class="grid grid-cols-1 border-t border-white/5 pt-4 mt-4 mb-4">
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-xs text-slate-400">Email</span>
+                                <span class="text-sm font-medium text-white truncate max-w-[200px]">
+                                    {{ artist.user?.email ?? '—' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <button
+                            @click="invite(artist.id)"
+                            class="w-full py-2.5 rounded-xl text-center text-white text-sm font-medium transition hover:opacity-90"
+                            style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);"
+                        >
                             Пригласить
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </AuthenticatedLayout>
 </template>

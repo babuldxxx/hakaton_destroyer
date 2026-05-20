@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import StatCard from '@/Components/StatCard.vue'
 import LineChart from '@/Components/Charts/LineChart.vue'
@@ -25,12 +25,20 @@ const stats = computed(() => page.props.stats ?? {
   paid_out: '436 800 ₽'
 })
 
-// Данные линейного графика
-const revenueData = {
-  labels: ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'],
-  datasets: [{
+/* ─── Период и график ─── */
+const selectedPeriod = ref('year')
+
+const periods = [
+  { key: 'week', label: 'Неделя' },
+  { key: 'month', label: 'Месяц' },
+  { key: 'quarter', label: '3 мес.' },
+  { key: 'half', label: '6 мес.' },
+  { key: 'year', label: 'Год' },
+]
+
+const revenueData = computed(() => {
+  const common = {
     label: 'Доход',
-    data: [180000, 205000, 220000, 235000, 284000, 350000, 372000, 395000, 430000, 455000, 480000, 520000],
     borderColor: '#7C3AED',
     backgroundColor: 'rgba(124, 58, 237, 0.08)',
     borderWidth: 3,
@@ -41,8 +49,37 @@ const revenueData = {
     pointHoverRadius: 7,
     tension: 0.4,
     fill: true
-  }]
-}
+  }
+
+  switch (selectedPeriod.value) {
+    case 'week':
+      return {
+        labels: ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
+        datasets: [{ ...common, data: [12000,19000,15000,22000,28000,35000,31000] }]
+      }
+    case 'month':
+      return {
+        labels: ['1','5','10','15','20','25','30'],
+        datasets: [{ ...common, data: [45000,52000,48000,61000,58000,72000,68000] }]
+      }
+    case 'quarter':
+      return {
+        labels: ['Нед 1','Нед 2','Нед 3','Нед 4','Нед 5','Нед 6','Нед 7','Нед 8','Нед 9','Нед 10','Нед 11','Нед 12'],
+        datasets: [{ ...common, data: [120000,135000,140000,155000,180000,200000,220000,215000,260000,300000,350000,380000] }]
+      }
+    case 'half':
+      return {
+        labels: ['Янв','Фев','Мар','Апр','Май','Июн'],
+        datasets: [{ ...common, data: [180000,205000,220000,235000,284000,350000] }]
+      }
+    case 'year':
+    default:
+      return {
+        labels: ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'],
+        datasets: [{ ...common, data: [180000,205000,220000,235000,284000,350000,372000,395000,430000,455000,480000,520000] }]
+      }
+  }
+})
 
 // Данные donut-chart
 const tracksRevenueData = {
@@ -162,8 +199,24 @@ const tracks = [
             style="background-color: #1A1F2B; box-shadow: 0px 4px 6px rgba(0,0,0,0.3);"
           >
             <h2 class="mb-6 text-lg font-semibold" style="color: #F8FAFC;">Мои доходы по месяцам</h2>
-            <div class="h-[320px] w-full">
+                        <div class="h-[320px] w-full">
               <LineChart :chart-data="revenueData" />
+            </div>
+
+            <!-- Переключатель периода -->
+            <div class="mt-5 flex flex-wrap gap-2">
+              <button
+                v-for="p in periods"
+                :key="p.key"
+                @click="selectedPeriod = p.key"
+                class="px-3.5 py-1.5 rounded-full text-xs font-medium transition border"
+                :class="selectedPeriod === p.key
+                  ? 'text-white border-transparent'
+                  : 'text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'"
+                :style="selectedPeriod === p.key ? { background: 'linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%)' } : {}"
+              >
+                {{ p.label }}
+              </button>
             </div>
           </div>
 
