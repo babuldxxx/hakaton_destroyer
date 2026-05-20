@@ -1,46 +1,75 @@
 <script setup>
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 defineProps({
     invitations: Array,
 })
 
-const acceptForm = useForm({})
-const declineForm = useForm({})
+const accept = (id) => {
+    router.post(route('artists.invitations.accept', id))
+}
 
-const accept = (id) => acceptForm.post(route('artists.invitations.accept', id))
-const decline = (id) => declineForm.post(route('artists.invitations.decline', id))
+const decline = (id) => {
+    if (!confirm('Отклонить приглашение?')) return
+    router.post(route('artists.invitations.decline', id))
+}
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <div class="p-6 max-w-2xl mx-auto">
+        <div class="p-6 md:p-10 max-w-3xl mx-auto">
             <h1 class="text-2xl font-bold text-white mb-6">Приглашения</h1>
 
-            <div v-if="invitations.length === 0" class="text-gray-400">Нет приглашений.</div>
+            <div v-if="invitations.length === 0" class="text-slate-400 text-center py-10">
+                Нет активных приглашений.
+            </div>
 
             <div v-else class="space-y-4">
-                <div v-for="inv in invitations" :key="inv.id"
-                     class="p-4 rounded-xl bg-[#1A1F2B] border border-[#2D3748] flex justify-between items-center">
-                    <div>
-                        <p class="text-white font-medium">{{ inv.label?.name ?? 'Лейбл' }}</p>
-                        <p class="text-sm text-gray-400">Приглашение от лейбла</p>
-                        <p class="text-xs text-gray-500">Статус: {{ inv.status }}</p>
+                <div
+                    v-for="inv in invitations"
+                    :key="inv.id"
+                    class="bg-[#1A1F2B] rounded-xl p-6 border border-white/5"
+                >
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-white font-semibold text-lg">{{ inv.label?.name ?? 'Лейбл' }}</p>
+                            <p class="text-slate-400 text-sm">Приглашает вас в свой лейбл</p>
+                        </div>
+                        <span
+                            v-if="inv.status === 'pending'"
+                            class="px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400"
+                        >
+                            Ожидает ответа
+                        </span>
+                        <span
+                            v-else-if="inv.status === 'accepted'"
+                            class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400"
+                        >
+                            Принято
+                        </span>
+                        <span
+                            v-else
+                            class="px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400"
+                        >
+                            Отклонено
+                        </span>
                     </div>
 
-                    <div v-if="inv.status === 'pending'" class="flex gap-2">
-                        <button @click="accept(inv.id)"
-                                class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-500">
+                    <div v-if="inv.status === 'pending'" class="flex gap-3">
+                        <button
+                            @click="accept(inv.id)"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition hover:opacity-90"
+                            style="background: linear-gradient(135deg, #7C3AED 0%, #3B82F6 100%);"
+                        >
                             Принять
                         </button>
-                        <button @click="decline(inv.id)"
-                                class="px-4 py-1.5 bg-red-600/80 text-white rounded-lg text-sm hover:bg-red-500">
+                        <button
+                            @click="decline(inv.id)"
+                            class="px-6 py-2.5 rounded-xl text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 transition"
+                        >
                             Отклонить
                         </button>
-                    </div>
-                    <div v-else class="text-sm text-gray-500">
-                        {{ inv.status === 'accepted' ? 'Принято' : 'Отклонено' }}
                     </div>
                 </div>
             </div>

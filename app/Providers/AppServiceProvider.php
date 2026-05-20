@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Artist;
+use App\Models\Invitation;
 use App\Policies\ArtistPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
@@ -25,5 +26,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
         Gate::policy(Artist::class, ArtistPolicy::class);
+        Gate::policy(Invitation::class, ArtistPolicy::class);
     }
 }

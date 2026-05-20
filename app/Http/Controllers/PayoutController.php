@@ -13,11 +13,8 @@ class PayoutController extends Controller
 {
     public function index()
     {
-        $role = auth()->user()->role;
-        if ($role instanceof \BackedEnum) $role = $role->value;
-
         // ---------- ЛЕЙБЛ ----------
-        if ($role === 'label') {
+        if (auth()->user()->hasRole('label')){
           $artists = Artist::select('artists.id', 'users.name as artist_name', 'artists.user_id')
               ->selectRaw('COALESCE(SUM(CASE WHEN transactions.status = ? THEN transactions.amount ELSE 0 END), 0) as pending_amount', ['pending'])
               ->selectRaw('COUNT(CASE WHEN transactions.status = ? THEN 1 END) as pending_count', ['pending'])
@@ -124,8 +121,6 @@ class PayoutController extends Controller
 
     private function ensureLabel(): void
     {
-        $role = auth()->user()->role;
-        if ($role instanceof \BackedEnum) $role = $role->value;
-        if ($role !== 'label') abort(403);
+        if (auth()->user()->hasRole('label')) abort(403);
     }
 }

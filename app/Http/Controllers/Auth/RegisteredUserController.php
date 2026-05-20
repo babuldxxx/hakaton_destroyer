@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Artist;
+use App\Models\Label;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +40,12 @@ class RegisteredUserController extends Controller
         ]);
 
         $user->assignRole($request->role);
+
+        if ($request->role === 'label') {
+            $label = Label::create(['name' => $request->name]);
+            $user->label_id = $label->id;
+            $user->save();
+        }
 
         if ($request->role === 'artist') {
             Artist::create([

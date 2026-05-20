@@ -192,14 +192,14 @@ class DatabaseSeeder extends Seeder
                 for ($m = 0; $m < 6; $m++) {
                     $periodStart = now()->subMonths($m)->startOfMonth();
                     $periodEnd = now()->subMonths($m)->endOfMonth();
-                    SongPlatformEarning::create([
+                    $earning = \App\Models\Earning::create([
                         'song_id'     => $song->id,
                         'platform_id' => $platform->id,
-                        'amount'      => rand(500, 5000) + (rand(0, 99) / 100),
+                        'period'      => $periodStart->format('Y-m'),
+                        'gross_amount'=> rand(500, 5000) + (rand(0, 99) / 100),
                         'currency'    => 'RUB',
-                        'period_start'=> $periodStart,
-                        'period_end'  => $periodEnd,
-                        'reported_at' => $periodEnd,
+                        'created_by'  => $song->label_id ? User::where('label_id', $song->label_id)->first()->id : 1,
+                        'status'      => 'distributed',
                     ]);
                 }
             }
@@ -212,13 +212,17 @@ class DatabaseSeeder extends Seeder
                 $earnings = $song->earnings()->inRandomOrder()->take(2)->get();
                 foreach ($earnings as $earning) {
                     Transaction::create([
+                        'earning_id'  => $earning->id,              // связь с earning
                         'user_id'     => $artist->user_id,
                         'artist_id'   => $artist->id,
-                        'song_id'     => $song->id,
-                        'platform_id' => $earning->platform_id,
-                        'type'        => TransactionType::PlatformEarning,
                         'amount'      => $earning->amount * 0.7,
-                        'description' => "Доход с {$earning->platform->name} за {$earning->period_start->format('Y-m')}",
+                        'type'        => 'author_rights',            // или TransactionType::PlatformEarning->value
+                        'status'      => 'pending',                  // новый столбец
+                        'period'      => $earning->period_start->format('Y-m'), // новый столбец
+                        'meta'        => json_encode([               // новый столбец
+                            'platform'    => $earning->platform->name,
+                            'description' => "Доход с {$earning->platform->name} за {$earning->period_start->format('Y-m')}",
+                        ]),
                     ]);
                 }
             }
