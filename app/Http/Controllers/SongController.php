@@ -85,22 +85,25 @@ class SongController extends Controller
         $this->ensureLabel();
 
         $validated = $request->validate([
-            'title'         => 'required|string|max:255',
-            'lyrics'        => 'nullable|string',
-            'written_at'    => 'nullable|date',
-            'released_at'   => 'nullable|date',
-            'genre_id'      => 'nullable|exists:genres,id',
-            'cover'         => 'nullable|image|max:5120',
-            'mp3'           => 'nullable|file|mimes:mp3|max:51200',
-            'wav'           => 'nullable|file|mimes:wav|max:512000',
-            'platforms'     => 'nullable|array',
-            'platforms.*'   => 'integer|exists:platforms,id',
-            'authors'       => 'nullable|array',
-            'authors.*.artist_id'        => 'required_with:authors|exists:artists,id',
+            'title'                    => 'required|string|max:255',
+            'lyrics'                   => 'nullable|string',
+            'written_at'               => 'nullable|date',
+            'released_at'              => 'nullable|date',
+            'genre_id'                 => 'nullable|exists:genres,id',
+            'label_share_percent'      => 'nullable|numeric|min:0|max:100',
+            'cover'                    => 'nullable|image|max:5120',
+            'mp3'                      => 'nullable|file|mimes:mp3|max:51200',
+            'wav'                      => 'nullable|file|mimes:wav|max:512000',
+            'platforms'                => 'nullable|array',
+            'platforms.*'              => 'integer|exists:platforms,id',
+            'authors'                  => 'nullable|array',
+            'authors.*.artist_id'      => 'required_with:authors|exists:artists,id',
             'authors.*.share_percentage' => 'required_with:authors|integer|min:0|max:100',
-            'authors.*.role'             => 'required_with:authors|string|in:author,performer,producer',
-            'authors.*.rights_type'      => 'required_with:authors|string|in:author_rights,related_rights',
+            'authors.*.role'           => 'required_with:authors|string|in:author,performer,producer',
+            'authors.*.rights_type'    => 'required_with:authors|string|in:author_rights,related_rights',
         ]);
+
+        $label = Label::find(auth()->user()->label_id);
 
         $song = Song::create([
             'title'       => $validated['title'],
@@ -109,6 +112,7 @@ class SongController extends Controller
             'released_at' => $validated['released_at'] ?? null,
             'genre_id'    => $validated['genre_id'] ?? null,
             'user_id'     => auth()->id(),
+            'label_id'    => $label?->id,
         ]);
 
         if (!empty($validated['platforms'])) {
@@ -135,6 +139,18 @@ class SongController extends Controller
                     'rights_type'      => $author['rights_type'] ?? 'author_rights',
                 ]);
             }
+
+            // Если руками задана доля лейбла — берём её. Иначе считаем остаток.
+            $manualLabelPercent = $validated['label_share_percent'] ?? null;
+
+            if ($manualLabelPercent === null) {
+                $authorRightsSum = collect($validated['authors'])
+                    ->where('rights_type', 'author_rights')
+                    ->sum('share_percentage');
+                $manualLabelPercent = max(0, 100 - $authorRightsSum);
+            }
+
+            $song->update(['label_share_percent' => (float) $manualLabelPercent]);
         }
 
         return redirect()->route('tracks.index')->with('success', 'Трек добавлен');
@@ -154,7 +170,7 @@ class SongController extends Controller
                 'genre'          => $song->genre?->name ?? '—',
                 'release_date'   => $song->released_at?->toDateString() ?? '—',
                 'written_at'     => $song->written_at?->toDateString() ?? null,
-                'cover_url' => $song->cover_url,
+                'cover_url'      => $song->cover_url,
                 'mp3_url'        => $song->mp3_path ? Storage::disk('public')->url($song->mp3_path) : null,
                 'wav_url'        => $song->wav_path ? Storage::disk('public')->url($song->wav_path) : null,
                 'total_revenue'  => number_format($song->earnings->sum('gross_amount'), 2, '.', ''),
@@ -200,14 +216,15 @@ class SongController extends Controller
 
         return Inertia::render('Tracks/Edit', [
             'song' => [
-                'id'           => $song->id,
-                'title'        => $song->title,
-                'lyrics'       => $song->lyrics,
-                'written_at'   => $song->written_at?->toDateString(),
-                'released_at'  => $song->released_at?->toDateString(),
-                'genre_id'     => $song->genre_id,
-                'platform_ids' => $song->platforms->pluck('id'),
-                'song_authors' => $song->songAuthors->map(fn ($a) => [
+                'id'                 => $song->id,
+                'title'              => $song->title,
+                'lyrics'             => $song->lyrics,
+                'written_at'         => $song->written_at?->toDateString(),
+                'released_at'        => $song->released_at?->toDateString(),
+                'genre_id'           => $song->genre_id,
+                'label_share_percent'=> $song->label_share_percent ?? 0, // ← отдаём в Vue
+                'platform_ids'       => $song->platforms->pluck('id'),
+                'song_authors'       => $song->songAuthors->map(fn ($a) => [
                     'artist_id'        => $a->artist_id,
                     'share_percentage' => $a->share_percentage,
                     'role'             => $a->role,
@@ -228,17 +245,18 @@ class SongController extends Controller
         $this->ensureLabel();
 
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'lyrics'      => 'nullable|string',
-            'written_at'  => 'nullable|date',
-            'released_at' => 'nullable|date',
-            'genre_id'    => 'nullable|exists:genres,id',
-            'cover'       => 'nullable|image|max:5120',
-            'mp3'         => 'nullable|file|mimes:mp3|max:51200',
-            'wav'         => 'nullable|file|mimes:wav|max:512000',
-            'platforms'   => 'nullable|array',
-            'platforms.*' => 'integer|exists:platforms,id',
-            'authors'     => 'nullable|array',
+            'title'                      => 'required|string|max:255',
+            'lyrics'                     => 'nullable|string',
+            'written_at'                 => 'nullable|date',
+            'released_at'                => 'nullable|date',
+            'genre_id'                   => 'nullable|exists:genres,id',
+            'label_share_percent'        => 'nullable|numeric|min:0|max:100',
+            'cover'                      => 'nullable|image|max:5120',
+            'mp3'                        => 'nullable|file|mimes:mp3|max:51200',
+            'wav'                        => 'nullable|file|mimes:wav|max:512000',
+            'platforms'                  => 'nullable|array',
+            'platforms.*'                => 'integer|exists:platforms,id',
+            'authors'                    => 'nullable|array',
             'authors.*.artist_id'        => 'required_with:authors|exists:artists,id',
             'authors.*.share_percentage' => 'required_with:authors|integer|min:0|max:100',
             'authors.*.role'             => 'required_with:authors|string|in:author,performer,producer',
@@ -279,6 +297,17 @@ class SongController extends Controller
                     'rights_type'      => $author['rights_type'] ?? 'author_rights',
                 ]);
             }
+
+            $manualLabelPercent = $validated['label_share_percent'] ?? null;
+
+            if ($manualLabelPercent === null) {
+                $authorRightsSum = collect($validated['authors'])
+                    ->where('rights_type', 'author_rights')
+                    ->sum('share_percentage');
+                $manualLabelPercent = max(0, 100 - $authorRightsSum);
+            }
+
+            $song->update(['label_share_percent' => (float) $manualLabelPercent]);
         }
 
         return redirect()->route('tracks.index')->with('success', 'Трек обновлён');
@@ -313,7 +342,9 @@ class SongController extends Controller
             'platform_id'         => $validated['platform_id'],
             'period'              => $validated['period'],
             'gross_amount'        => $validated['gross_amount'],
-            'label_share_percent' => $validated['label_share_percent'] ?? 0,
+            'label_share_percent' => $validated['label_share_percent'] 
+                                      ?? $song->label_share_percent 
+                                      ?? 0,
             'created_by'          => auth()->id(),
             'status'              => 'pending',
         ]);

@@ -12,6 +12,7 @@ class Earning extends Model
     use HasFactory;
 
     protected $fillable = [
+        'label_id',
         'song_id',
         'platform_id',
         'royalty_report_id',
@@ -19,17 +20,12 @@ class Earning extends Model
         'period',
         'gross_amount',
         'label_share_percent',
+        'artist_shares',
+        'raw_track_name',
+        'raw_artist_name',
         'currency',
         'status',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'gross_amount' => 'decimal:2',
-            'label_share_percent' => 'decimal:2',
-        ];
-    }
 
     public function song(): BelongsTo
     {
@@ -41,18 +37,18 @@ class Earning extends Model
         return $this->belongsTo(Platform::class);
     }
 
-    public function royaltyReport(): BelongsTo
+    public function artist(): BelongsTo
     {
-        return $this->belongsTo(RoyaltyReport::class);
-    }
-
-    public function creator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(Artist::class);
     }
 
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function label(): BelongsTo
+    {
+        return $this->belongsTo(Label::class);
     }
 }
