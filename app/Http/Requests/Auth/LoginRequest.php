@@ -18,11 +18,12 @@ class LoginRequest extends FormRequest
 
     public function rules(): array
     {
+        $loginType = $this->input('login_type', 'email');
+
         return [
-            'login_type' => ['required', 'in:email,nickname'],
-            'email'      => ['required_if:login_type,email', 'nullable', 'email'],
-            'nickname'   => ['required_if:login_type,nickname', 'nullable', 'string'],
-            'password'   => ['required', 'string'],
+            'email'    => $loginType === 'email'    ? ['required', 'string', 'email'] : ['nullable', 'string'],
+            'nickname' => $loginType === 'nickname' ? ['required', 'string', 'max:30'] : ['nullable', 'string'],
+            'password' => ['required', 'string'],
         ];
     }
 
@@ -30,19 +31,17 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if ($this->login_type === 'email') {
-            $credentials = [
-                'email'    => $this->email,
-                'password' => $this->password,
-            ];
+        $credentials = [
+            'password' => $this->input('password'),
+        ];
+
+        if ($this->input('login_type', 'email') === 'nickname') {
+            $credentials['nickname'] = $this->input('nickname');
         } else {
-            $credentials = [
-                'nickname' => $this->nickname,
-                'password' => $this->password,
-            ];
+            $credentials['email'] = $this->input('email');
         }
 
-        if (!Auth::attempt($credentials, $this->boolean('remember'))) {
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

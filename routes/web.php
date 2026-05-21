@@ -12,7 +12,14 @@ use App\Http\Controllers\PlatformController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', fn () => redirect()->route('login'));
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canLogin'       => Route::has('login'),
+        'canRegister'    => Route::has('register'),
+        'laravelVersion' => Illuminate\Foundation\Application::VERSION,
+        'phpVersion'     => PHP_VERSION,
+    ]);
+});
 
 Route::middleware(['auth'])->group(function () {
 

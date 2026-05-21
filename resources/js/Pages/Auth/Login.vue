@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Head, useForm } from '@inertiajs/vue3'
-import { Link } from '@inertiajs/vue3'
+import { Head, useForm, Link } from '@inertiajs/vue3'
 import GuestLayout from '@/Layouts/GuestLayout.vue'
 
 const mode = ref('login')          // 'login' | 'forgot'
@@ -12,15 +11,31 @@ const loginForm = useForm({
     nickname: '',
     password: '',
     remember: false,
-    login_type: 'email',           // подсказка серверу
+    login_type: 'email',
 })
 
 const forgotForm = useForm({
     email: '',
 })
 
+function switchLoginMode(newMode) {
+    loginMode.value = newMode
+    if (newMode === 'email') {
+        loginForm.errors.nickname = ''
+    } else {
+        loginForm.errors.email = ''
+    }
+}
+
 function submitLogin() {
     loginForm.login_type = loginMode.value
+
+    if (loginMode.value === 'email') {
+        loginForm.nickname = ''
+    } else {
+        loginForm.email = ''
+    }
+
     loginForm.post(route('login'), {
         onFinish: () => loginForm.reset('password'),
     })
@@ -70,7 +85,7 @@ function submitForgot() {
                         <div class="flex rounded-xl p-1" style="background-color: #13161f;">
                             <button
                                 type="button"
-                                @click="loginMode = 'email'"
+                                @click="switchLoginMode('email')"
                                 :class="[
                                     'flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
                                     loginMode === 'email'
@@ -83,7 +98,7 @@ function submitForgot() {
                             </button>
                             <button
                                 type="button"
-                                @click="loginMode = 'nickname'"
+                                @click="switchLoginMode('nickname')"
                                 :class="[
                                     'flex-1 rounded-lg py-2.5 text-sm font-medium transition-all duration-200',
                                     loginMode === 'nickname'
