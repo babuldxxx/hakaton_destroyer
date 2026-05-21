@@ -2,21 +2,17 @@
 
 namespace Database\Seeders;
 
-use App\Enums\PayoutStatus;
 use App\Enums\RightsType;
 use App\Enums\SongAuthorRole;
 use App\Models\Artist;
 use App\Models\CustomOrder;
-use App\Models\Earning;
 use App\Models\Genre;
 use App\Models\Invitation;
 use App\Models\Label;
-use App\Models\Payout;
 use App\Models\Platform;
 use App\Models\Song;
 use App\Models\SongAuthor;
 use App\Models\User;
-use App\Services\RoyaltyCalculator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -121,7 +117,7 @@ class DatabaseSeeder extends Seeder
             Invitation::create(['label_id' => $label2->id, 'artist_id' => $pendingArtists[1]->id, 'status' => 'pending']);
         }
 
-        // --- ТРЕКИ ---
+        // --- ТРЕКИ (без доходов) ---
         $allArtists = array_merge($artistsLabel1, $artistsLabel2);
         $platforms = Platform::all();
         $songTitles = [
@@ -134,8 +130,6 @@ class DatabaseSeeder extends Seeder
             'Echoes of You', 'Runaway', 'Higher Ground', 'Into the Blue',
             'Shattered Glass', 'Last Goodbye', 'Wildfire', 'Gravity'
         ];
-
-        $calculator = app(RoyaltyCalculator::class);
 
         foreach ($songTitles as $title) {
             $artist = $allArtists[array_rand($allArtists)];
@@ -180,53 +174,9 @@ class DatabaseSeeder extends Seeder
                     'rights_type'     => $i === 0 ? RightsType::Author : RightsType::Related,
                 ]);
             }
-
-            // Доходы за 12 месяцев (последний год)
-            // Доходы за последние 12 месяцев
-            foreach ($song->platforms as $platform) {
-                for ($m = 11; $m >= 0; $m--) {   // от 11 месяцев назад до текущего
-                    $periodDate = now()->subMonths($m)->startOfMonth();
-                    $period = $periodDate->format('Y-m');
-                    $gross = rand(300, 8000) + (rand(0, 99) / 100);
-                    $earning = Earning::create([
-                        'song_id'             => $song->id,
-                        'platform_id'         => $platform->id,
-                        'period'              => $period,
-                        'gross_amount'        => $gross,
-                        'label_share_percent' => rand(0, 25),
-                        'created_by'          => $label ? $label->users()->first()?->id ?? 1 : 1,
-                        'status'              => 'pending',
-                        'created_at'          => $periodDate->toDateTimeString(), // ← важно
-                    ]);
-                    $calculator->distribute($earning);
-                }
-            }
         }
 
-        // --- ВЫПЛАТЫ ---
-        foreach ($allArtists as $artist) {
-            // Одна-две завершённые выплаты
-            for ($k = 0; $k < rand(1, 2); $k++) {
-                Payout::create([
-                    'artist_id' => $artist->id,
-                    'amount'    => rand(15000, 60000),
-                    'method'    => 'Банковская карта',
-                    'status'    => PayoutStatus::Completed,
-                    'paid_at'   => now()->subDays(rand(5, 350)),
-                ]);
-            }
-            // Одна ожидающая
-            if (rand(0, 1)) {
-                Payout::create([
-                    'artist_id' => $artist->id,
-                    'amount'    => rand(5000, 30000),
-                    'method'    => 'Банковская карта',
-                    'status'    => PayoutStatus::Pending,
-                ]);
-            }
-        }
-
-        // --- КАСТОМНЫЕ ЗАКАЗЫ ---
+        // --- КАСТОМНЫЕ ЗАКАЗЫ (без привязки к доходам) ---
         foreach ([$label1, $label2] as $label) {
             for ($i = 0; $i < 3; $i++) {
                 $song = Song::where('label_id', $label->id)->inRandomOrder()->first();

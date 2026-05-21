@@ -10,7 +10,7 @@ use Inertia\Inertia;
 class ArtistDashboardController extends Controller
 {
     /** Типы транзакций, которые считаем доходом артиста */
-    private const EARNING_TYPES = ['author_rights', 'related_rights'];
+    private const EARNING_TYPES = ['author_royalty', 'unallocated'];
 
     public function index()
     {

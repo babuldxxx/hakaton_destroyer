@@ -32,14 +32,16 @@ class LabelDashboardController extends Controller
 
         // Общий доход — по ВСЕМ записям лейбла (все периоды)
         $totalRevenue = Earning::where('label_id', $label->id)->sum('gross_amount');
-        $labelIncome  = Earning::where('label_id', $label->id)->sum('label_amount');
+        $labelIncome = Transaction::where('type', 'label_share')
+            ->whereHas('earning', fn ($q) => $q->where('label_id', $label->id))
+            ->sum('amount');
 
         $artistsCount = Artist::where('label_id', $label->id)->where('status', 'approved')->count();
         $tracksCount  = Song::where('label_id', $label->id)->count();
 
-        // Исправлено: правильные типы транзакций от RoyaltyCalculator
-        $pendingPayouts = (float) Transaction::whereHas('earning', fn ($q) => $q->where('label_id', $label->id))
-            ->whereIn('type', ['author_royalty', 'unallocated'])
+        $pendingPayouts = (float) Transaction::query()
+            ->whereHas('earning', fn($q) => $q->where('label_id', $label->id))
+            ->where('type', 'author_royalty')   // только авторские роялти
             ->where('status', 'pending')
             ->sum('amount');
 

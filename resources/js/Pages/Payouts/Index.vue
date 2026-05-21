@@ -7,7 +7,7 @@ const props = defineProps({
     artists: Array,
     payouts: Array,
     stats: Object,
-    transactions: Array, // ← было Object, исправлено на Array
+    transactions: Array,
 })
 
 const page = usePage()
@@ -26,13 +26,13 @@ const filters = [
 ]
 
 const filteredPayouts = computed(() => {
-    if (!props.payouts?.length) return []            // ← убран .data
+    if (!props.payouts?.length) return []
     if (activeFilter.value === 'all') return props.payouts
     return props.payouts.filter(p => p.status === activeFilter.value)
 })
 
 const filteredTransactions = computed(() => {
-    if (!props.transactions?.length) return []       // ← убран .data
+    if (!props.transactions?.length) return []
     if (activeFilter.value === 'all') return props.transactions
     return props.transactions.filter(tx => tx.status === activeFilter.value)
 })
@@ -43,6 +43,15 @@ const form = useForm({
 
 function createPayout(artist) {
     form.artist_id = artist.id
+    form.post(route('payouts.store'), {
+        preserveScroll: true,
+        onSuccess: () => form.reset(),
+    })
+}
+
+function createPayoutForAll() {
+    if (!confirm('Создать выплаты для всех артистов?')) return
+    form.artist_id = 'all'
     form.post(route('payouts.store'), {
         preserveScroll: true,
         onSuccess: () => form.reset(),

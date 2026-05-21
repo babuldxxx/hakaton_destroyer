@@ -100,7 +100,7 @@ class SongController extends Controller
             'authors.*.artist_id'      => 'required_with:authors|exists:artists,id',
             'authors.*.share_percentage' => 'required_with:authors|integer|min:0|max:100',
             'authors.*.role'           => 'required_with:authors|string|in:author,performer,producer',
-            'authors.*.rights_type'    => 'required_with:authors|string|in:author_rights,related_rights',
+            'authors.*.rights_type' => 'nullable|string|in:author_rights,related_rights',
         ]);
 
         $label = Label::find(auth()->user()->label_id);
@@ -244,6 +244,16 @@ class SongController extends Controller
     {
         $this->ensureLabel();
 
+        $data = $request->all();
+        if (isset($data['authors'])) {
+            foreach ($data['authors'] as &$author) {
+                if (isset($author['share_percentage'])) {
+                    $author['share_percentage'] = (float) str_replace(',', '.', $author['share_percentage']);
+                }
+            }
+        }
+        $request->merge($data);
+
         $validated = $request->validate([
             'title'                      => 'required|string|max:255',
             'lyrics'                     => 'nullable|string',
@@ -258,9 +268,9 @@ class SongController extends Controller
             'platforms.*'                => 'integer|exists:platforms,id',
             'authors'                    => 'nullable|array',
             'authors.*.artist_id'        => 'required_with:authors|exists:artists,id',
-            'authors.*.share_percentage' => 'required_with:authors|integer|min:0|max:100',
+            'authors.*.share_percentage' => 'required_with:authors|numeric|min:0|max:100',
             'authors.*.role'             => 'required_with:authors|string|in:author,performer,producer',
-            'authors.*.rights_type'      => 'required_with:authors|string|in:author_rights,related_rights',
+            'authors.*.rights_type' => 'nullable|string|in:author_rights,related_rights',
         ]);
 
         $song->update([
@@ -342,8 +352,8 @@ class SongController extends Controller
             'platform_id'         => $validated['platform_id'],
             'period'              => $validated['period'],
             'gross_amount'        => $validated['gross_amount'],
-            'label_share_percent' => $validated['label_share_percent'] 
-                                      ?? $song->label_share_percent 
+            'label_share_percent' => $validated['label_share_percent']
+                                      ?? $song->label_share_percent
                                       ?? 0,
             'created_by'          => auth()->id(),
             'status'              => 'pending',
